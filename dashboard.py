@@ -72,8 +72,11 @@ def load_data(uploaded_file=None):
 
 # Tenta carregar logo localmente (logo.png, logo.jpg, etc.)
 script_dir = os.path.dirname(os.path.abspath(__file__))
+# Busca arquivos no diretório de forma insensível a maiúsculas/minúsculas (importante para Linux/Streamlit Cloud)
+files_in_dir = os.listdir(script_dir)
 possible_logos = ["logo.png", "logo.jpg", "logo.jpeg"]
-local_logo = next((os.path.join(script_dir, f) for f in possible_logos if os.path.exists(os.path.join(script_dir, f))), None)
+found_logo = next((f for f in files_in_dir if f.lower() in possible_logos), None)
+local_logo = os.path.join(script_dir, found_logo) if found_logo else None
 
 logo_image = None
 if local_logo:
@@ -357,3 +360,4 @@ st.markdown("<div style='text-align: center'>Desenvolvido por <b>Clayton S. Silv
 
 
 #   streamlit run dashboard.py
+
