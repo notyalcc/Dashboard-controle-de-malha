@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 import io
 import os
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 
 # Configuração da página
 st.set_page_config(page_title="Dashboard de Logística", layout="wide")
@@ -24,6 +24,22 @@ def get_database_engine(url):
 engine = get_database_engine(DATABASE_URL)
 TABLE_NAME = 'performance_logistica'
 
+def save_uploaded_data(df):
+    try:
+        # Colunas esperadas (baseado no formulário manual e estrutura do banco)
+        expected_cols = ['DATA', 'TRANSPORTADORA', 'OPERAÇÃO', 'LIBERADOS', 'MALHA']
+        # Filtra colunas existentes no DF carregado para evitar erros de schema
+        cols_to_save = [c for c in expected_cols if c in df.columns]
+        
+        if cols_to_save:
+            df[cols_to_save].to_sql(TABLE_NAME, engine, if_exists='append', index=False)
+            st.sidebar.success("✅ Dados do arquivo salvos no banco com sucesso!")
+            load_data.clear() # Limpa cache para atualizar dados na tela
+        else:
+            st.sidebar.error("❌ O arquivo não contém as colunas necessárias.")
+    except Exception as e:
+        st.sidebar.error(f"❌ Erro ao salvar: {e}")
+
 @st.cache_data
 def load_data(uploaded_file=None):
     df = None
@@ -40,7 +56,8 @@ def load_data(uploaded_file=None):
     # 2. Tenta carregar do Banco de Dados SQL
     else:
         try:
-            df = pd.read_sql(f"SELECT * FROM {TABLE_NAME}", con=engine)
+            # parse_dates ajuda o pandas a reconhecer datas automaticamente vindo do SQL
+            df = pd.read_sql(f"SELECT * FROM {TABLE_NAME}", con=engine, parse_dates=['DATA'])
         except Exception as e:
             error_str = str(e)
             # Se for erro de tabela inexistente, ignoramos.
@@ -128,6 +145,11 @@ df = load_data(uploaded_file)
 if df is None:
     st.info("O banco de dados está vazio. Utilize o menu lateral para carregar um arquivo ou inserir dados manualmente.")
     st.stop()
+
+# Botão para salvar dados importados no banco (aparece apenas se houver upload)
+if uploaded_file is not None:
+    if st.sidebar.button("💾 Salvar Arquivo no Banco"):
+        save_uploaded_data(df)
 
 st.sidebar.header("Filtros")
 
@@ -377,6 +399,7 @@ st.markdown("<div style='text-align: center'>Desenvolvido por <b>Clayton S. Silv
 
 
 #   streamlit run dashboard.py
+
 
 
 
