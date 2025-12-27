@@ -34,11 +34,14 @@ def get_database_engine(url):
         parsed = urlparse(url)
         hostname = parsed.hostname
         if hostname and not hostname.replace('.', '').isdigit():
-            ip_v4 = socket.gethostbyname(hostname)
-            new_netloc = parsed.netloc.replace(hostname, ip_v4)
-            url = urlunparse(parsed._replace(netloc=new_netloc))
-    except Exception:
-        pass # Se falhar, usa a URL original
+            # Usa getaddrinfo para garantir IPv4 (AF_INET)
+            infos = socket.getaddrinfo(hostname, None, socket.AF_INET)
+            if infos:
+                ip_v4 = infos[0][4][0]
+                new_netloc = parsed.netloc.replace(hostname, ip_v4)
+                url = urlunparse(parsed._replace(netloc=new_netloc))
+    except Exception as e:
+        print(f"Erro ao resolver DNS: {e}")
     
     return create_engine(url, pool_pre_ping=True)
 
@@ -381,7 +384,6 @@ st.markdown("<div style='text-align: center'>Desenvolvido por <b>Clayton S. Silv
 
 
 #   streamlit run dashboard.py
-
 
 
 
