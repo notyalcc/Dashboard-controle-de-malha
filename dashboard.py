@@ -3,8 +3,6 @@ import pandas as pd
 import plotly.express as px
 import io
 import os
-import socket
-from urllib.parse import urlparse, urlunparse
 from sqlalchemy import create_engine, text
 
 # Configuração da página
@@ -14,50 +12,14 @@ st.set_page_config(page_title="Dashboard de Logística", layout="wide")
 
 # CONFIGURAÇÃO DO BANCO DE DADOS
 
-# Tenta carregar a URL dos segredos (para quando estiver Online/Seguro)
-try:
-    DATABASE_URL = st.secrets["DATABASE_URL"]
-except Exception:
-    # Fallback ou erro se não encontrar os segredos.
-    # Para rodar localmente, crie um arquivo .streamlit/secrets.toml
-    st.error("A configuração DATABASE_URL não foi encontrada nos segredos (st.secrets).")
-    st.stop()
+# ALTERAÇÃO: Mudamos para SQLite (Banco Local) para eliminar erros de rede/Supabase.
+# Isso criará automaticamente um arquivo 'dados.db' na pasta do seu projeto.
+DATABASE_URL = "sqlite:///dados.db"
 
 @st.cache_resource
 def get_database_engine(url):
-    """
-    Cria a engine do banco de dados com cache e força IPv4 para evitar erros de conexão
-    com Supabase em redes que priorizam IPv6 incorretamente.
-    """
-    try:
-        # Tenta resolver o hostname para IPv4 explicitamente
-        parsed = urlparse(url)
-        hostname = parsed.hostname
-        if hostname and not hostname.replace('.', '').isdigit():
-            ip_v4 = None
-            # Tentativa 1: gethostbyname (mais simples e direto)
-            try:
-                ip_v4 = socket.gethostbyname(hostname)
-            except Exception:
-                # Tentativa 2: getaddrinfo (fallback)
-                try:
-                    infos = socket.getaddrinfo(hostname, 5432, family=socket.AF_INET)
-                    if infos:
-                        ip_v4 = infos[0][4][0]
-                except Exception as e:
-                    print(f"Falha secundária DNS: {e}")
-                    pass
-            
-            if ip_v4:
-                new_netloc = parsed.netloc.replace(hostname, ip_v4)
-                url = urlunparse(parsed._replace(netloc=new_netloc))
-                print(f"Conexão forçada via IPv4: {hostname} -> {ip_v4}")
-            else:
-                st.error(f"⚠️ ERRO DE REDE: Não foi possível encontrar o servidor {hostname}. Verifique se seu projeto no Supabase não está PAUSADO.")
-    except Exception as e:
-        print(f"Erro ao resolver DNS: {e}")
-    
-    return create_engine(url, pool_pre_ping=True)
+    # SQLite é simples e direto, não precisa de tratamento de DNS complexo
+    return create_engine(url)
 
 engine = get_database_engine(DATABASE_URL)
 TABLE_NAME = 'performance_logistica'
@@ -79,8 +41,13 @@ def load_data(uploaded_file=None):
     else:
         try:
             df = pd.read_sql(f"SELECT * FROM {TABLE_NAME}", con=engine)
-        except Exception:
-            # Se a tabela não existir (primeira execução), retorna None ou DataFrame vazio
+        except Exception as e:
+            error_str = str(e)
+            # Se for erro de tabela inexistente, ignoramos.
+            if "does not exist" in error_str or "no such table" in error_str:
+                return None
+            
+            st.error(f"❌ Erro ao acessar banco de dados local: {e}")
             return None
 
     if df is None:
@@ -158,6 +125,7 @@ with st.sidebar.form("form_insercao"):
 df = load_data(uploaded_file)
 
 if df is None:
+    st.info("O banco de dados está vazio. Utilize o menu lateral para carregar um arquivo ou inserir dados manualmente.")
     st.stop()
 
 st.sidebar.header("Filtros")
@@ -259,6 +227,7 @@ with tab_geral:
                              title="Volume Liberado por Dia", 
                              labels={'LIBERADOS': 'Volume', 'DATA': 'Data'},
                              text_auto=True)
+        fig_vol_dia_g.update_xaxes(tickformat="%d/%m/%Y")
         st.plotly_chart(fig_vol_dia_g, key="geral_vol_dia")
     with col_g2:
         df_dia_malha_g = df_dia_geral.groupby(['DATA', 'TRANSPORTADORA'])['MALHA'].sum().reset_index()
@@ -267,6 +236,7 @@ with tab_geral:
                                title="Distribuição de Malha (%) por Dia",
                                labels={'MALHA_PCT': '% Malha', 'DATA': 'Data'},
                                text_auto='.1f')
+        fig_malha_dia_g.update_xaxes(tickformat="%d/%m/%Y")
         st.plotly_chart(fig_malha_dia_g, key="geral_malha_dia")
         
     st.markdown("---")
@@ -326,6 +296,7 @@ with tab_dia:
                              title="Volume Liberado por Dia (Por Transportadora)", 
                              labels={'LIBERADOS': 'Volume', 'DATA': 'Data'},
                              text_auto=True)
+        fig_vol_dia.update_xaxes(tickformat="%d/%m/%Y")
         st.plotly_chart(fig_vol_dia, key="dia_vol")
     
     with col_d2:
@@ -337,6 +308,7 @@ with tab_dia:
                                title="Distribuição de Malha (%) por Dia",
                                labels={'MALHA_PCT': '% Malha', 'DATA': 'Data'},
                                text_auto='.1f')
+        fig_malha_dia.update_xaxes(tickformat="%d/%m/%Y")
         st.plotly_chart(fig_malha_dia, key="dia_malha")
 
 with tab_mes:
@@ -388,7 +360,13 @@ with tab_ano:
 
 # --- 4. TABELA DE DADOS ---
 with st.expander("Ver Dados Detalhados"):
-    st.dataframe(df_filtered.sort_values(by=['DATA', 'TRANSPORTADORA']), width="stretch")
+    st.dataframe(
+        df_filtered.sort_values(by=['DATA', 'TRANSPORTADORA']),
+        width="stretch",
+        column_config={
+            "DATA": st.column_config.DateColumn("Data", format="DD/MM/YYYY")
+        }
+    )
 
 # Assinatura no rodapé da página principal
 st.markdown("---")
@@ -398,6 +376,7 @@ st.markdown("<div style='text-align: center'>Desenvolvido por <b>Clayton S. Silv
 
 
 #   streamlit run dashboard.py
+
 
 
 
