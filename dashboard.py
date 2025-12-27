@@ -34,12 +34,26 @@ def get_database_engine(url):
         parsed = urlparse(url)
         hostname = parsed.hostname
         if hostname and not hostname.replace('.', '').isdigit():
-            # Usa getaddrinfo para garantir IPv4 (AF_INET)
-            infos = socket.getaddrinfo(hostname, None, socket.AF_INET)
-            if infos:
-                ip_v4 = infos[0][4][0]
+            ip_v4 = None
+            # Tentativa 1: gethostbyname (mais simples e direto)
+            try:
+                ip_v4 = socket.gethostbyname(hostname)
+            except Exception:
+                # Tentativa 2: getaddrinfo (fallback)
+                try:
+                    infos = socket.getaddrinfo(hostname, 5432, family=socket.AF_INET)
+                    if infos:
+                        ip_v4 = infos[0][4][0]
+                except Exception as e:
+                    print(f"Falha secundária DNS: {e}")
+                    pass
+            
+            if ip_v4:
                 new_netloc = parsed.netloc.replace(hostname, ip_v4)
                 url = urlunparse(parsed._replace(netloc=new_netloc))
+                print(f"Conexão forçada via IPv4: {hostname} -> {ip_v4}")
+            else:
+                st.error(f"⚠️ ERRO DE REDE: Não foi possível encontrar o servidor {hostname}. Verifique se seu projeto no Supabase não está PAUSADO.")
     except Exception as e:
         print(f"Erro ao resolver DNS: {e}")
     
