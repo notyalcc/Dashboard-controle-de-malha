@@ -24,7 +24,7 @@ def get_database_engine(url):
 engine = get_database_engine(DATABASE_URL)
 TABLE_NAME = 'performance_logistica'
 
-def save_uploaded_data(df):
+def save_uploaded_data(df, replace=False):
     try:
         # Colunas esperadas (baseado no formulário manual e estrutura do banco)
         expected_cols = ['DATA', 'TRANSPORTADORA', 'OPERAÇÃO', 'LIBERADOS', 'MALHA']
@@ -32,8 +32,9 @@ def save_uploaded_data(df):
         cols_to_save = [c for c in expected_cols if c in df.columns]
         
         if cols_to_save:
-            df[cols_to_save].to_sql(TABLE_NAME, engine, if_exists='append', index=False)
-            st.sidebar.success("✅ Dados do arquivo salvos no banco com sucesso!")
+            mode = 'replace' if replace else 'append'
+            df[cols_to_save].to_sql(TABLE_NAME, engine, if_exists=mode, index=False)
+            st.sidebar.success(f"✅ Dados salvos em 'dados.db' ({mode}) com sucesso!")
             load_data.clear() # Limpa cache para atualizar dados na tela
         else:
             st.sidebar.error("❌ O arquivo não contém as colunas necessárias.")
@@ -148,8 +149,9 @@ if df is None:
 
 # Botão para salvar dados importados no banco (aparece apenas se houver upload)
 if uploaded_file is not None:
-    if st.sidebar.button("💾 Salvar Arquivo no Banco"):
-        save_uploaded_data(df)
+    replace_data = st.sidebar.checkbox("Substituir todo o banco de dados", help="Marque para apagar o banco atual e criar um novo com este arquivo.")
+    if st.sidebar.button("💾 Converter/Salvar em dados.db"):
+        save_uploaded_data(df, replace=replace_data)
 
 st.sidebar.header("Filtros")
 
@@ -399,7 +401,6 @@ st.markdown("<div style='text-align: center'>Desenvolvido por <b>Clayton S. Silv
 
 
 #   streamlit run dashboard.py
-
 
 
 
