@@ -4,6 +4,7 @@ import plotly.express as px
 import io
 import os
 import shutil
+import stat
 import tempfile
 from sqlalchemy import create_engine
 
@@ -32,6 +33,8 @@ if "db_path" not in st.session_state:
         target_path = os.path.join(temp_dir, DB_FILE)
         if os.path.exists(DB_FILE):
             shutil.copy2(DB_FILE, target_path)
+            # Correção: Garante que o arquivo copiado tenha permissão de escrita
+            os.chmod(target_path, stat.S_IREAD | stat.S_IWRITE)
     
     st.session_state.db_path = target_path
 
@@ -431,8 +434,3 @@ st.markdown("<div style='text-align: center'>Desenvolvido por <b>Clayton S. Silv
 
 
 #   streamlit run dashboard.py
-
-
-
-
-
