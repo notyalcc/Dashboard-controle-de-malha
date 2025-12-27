@@ -315,7 +315,7 @@ with tab_dia:
     
     with col_d1:
         # Total Liberados por Transportadora (Dia)
-        fig_vol_dia = px.bar(df_dia_view, x='DATA', y='LIBERADOS', color='TRANSPORTADORA',
+        fig_vol_dia = px.bar(df_dia_view, x='DATA', y='LIBERADOS', color='TRANSPORTADORA',barmode='group',
                              title="Volume Liberado por Dia (Por Transportadora)", 
                              labels={'LIBERADOS': 'Volume', 'DATA': 'Data'},
                              text_auto=True)
@@ -399,6 +399,7 @@ st.markdown("<div style='text-align: center'>Desenvolvido por <b>Clayton S. Silv
 
 
 #   streamlit run dashboard.py
+
 
 
 
