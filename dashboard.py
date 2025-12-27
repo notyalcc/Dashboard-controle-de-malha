@@ -59,7 +59,9 @@ def load_data(uploaded_file=None):
 
     # Converter coluna DATA para datetime
     if 'DATA' in df.columns:
-        df['DATA'] = pd.to_datetime(df['DATA'], dayfirst=True, errors='coerce')
+        # Se veio de arquivo, assume formato BR (dia primeiro). Se veio do banco, formato ISO (ano primeiro).
+        day_first = True if uploaded_file is not None else False
+        df['DATA'] = pd.to_datetime(df['DATA'], dayfirst=day_first, errors='coerce')
 
     # Garantir que colunas numéricas sejam números (corrige erro de soma de strings)
     for col in ['LIBERADOS', 'MALHA']:
@@ -376,6 +378,7 @@ st.markdown("<div style='text-align: center'>Desenvolvido por <b>Clayton S. Silv
 
 
 #   streamlit run dashboard.py
+
 
 
 
