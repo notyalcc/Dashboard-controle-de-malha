@@ -3,8 +3,6 @@ import pandas as pd
 import plotly.express as px
 import io
 import os
-import shutil
-import stat
 import tempfile
 from sqlalchemy import create_engine
 
@@ -15,30 +13,8 @@ st.set_page_config(page_title="Dashboard de Logística", layout="wide")
 
 # CONFIGURAÇÃO DO BANCO DE DADOS
 
-# ALTERAÇÃO: Mudamos para SQLite (Banco Local) para eliminar erros de rede/Supabase.
-# Isso criará automaticamente um arquivo 'dados.db' na pasta do seu projeto.
-
-# Lógica para lidar com ambiente Read-Only (Streamlit Cloud) e persistir na sessão
-if "db_path" not in st.session_state:
-    DB_FILE = 'dados.db'
-    target_path = DB_FILE
-    
-    # Verifica se o arquivo ou diretório são somente-leitura
-    read_only = (os.path.exists(DB_FILE) and not os.access(DB_FILE, os.W_OK)) or \
-                (not os.path.exists(DB_FILE) and not os.access('.', os.W_OK))
-    
-    if read_only:
-        # Cria um diretório temporário e copia o banco para lá
-        temp_dir = tempfile.mkdtemp()
-        target_path = os.path.join(temp_dir, DB_FILE)
-        if os.path.exists(DB_FILE):
-            shutil.copy2(DB_FILE, target_path)
-            # Correção: Garante que o arquivo copiado tenha permissão de escrita
-            os.chmod(target_path, stat.S_IREAD | stat.S_IWRITE)
-    
-    st.session_state.db_path = target_path
-
-DATABASE_URL = f"sqlite:///{st.session_state.db_path}"
+DATABASE_URL = "sqlite:///dados.db"
+TABLE_NAME = 'performance_logistica'
 
 @st.cache_resource
 def get_database_engine(url):
@@ -46,7 +22,21 @@ def get_database_engine(url):
     return create_engine(url)
 
 engine = get_database_engine(DATABASE_URL)
-TABLE_NAME = 'performance_logistica'
+
+# --- INICIALIZAÇÃO DOS DADOS NA MEMÓRIA (SESSION STATE) ---
+# Isso evita erros de "Read-only database" no Streamlit Cloud, pois trabalhamos na RAM.
+if 'df_dados' not in st.session_state:
+    try:
+        # Lê do banco local (leitura funciona mesmo se o arquivo for read-only)
+        df_start = pd.read_sql(f"SELECT * FROM {TABLE_NAME}", con=engine, parse_dates=['DATA'])
+        # Garante tipos corretos
+        df_start.columns = df_start.columns.str.strip().str.upper()
+        if 'DATA' in df_start.columns:
+            df_start['DATA'] = pd.to_datetime(df_start['DATA'])
+        st.session_state['df_dados'] = df_start
+    except Exception:
+        # Se der erro (ex: banco não existe), inicia vazio
+        st.session_state['df_dados'] = pd.DataFrame(columns=['DATA', 'TRANSPORTADORA', 'OPERAÇÃO', 'LIBERADOS', 'MALHA'])
 
 def save_uploaded_data(df, replace=False):
     try:
@@ -56,16 +46,18 @@ def save_uploaded_data(df, replace=False):
         cols_to_save = [c for c in expected_cols if c in df.columns]
         
         if cols_to_save:
-            mode = 'replace' if replace else 'append'
-            df[cols_to_save].to_sql(TABLE_NAME, engine, if_exists=mode, index=False)
-            st.sidebar.success(f"✅ Dados salvos em 'dados.db' ({mode}) com sucesso!")
-            load_data.clear() # Limpa cache para atualizar dados na tela
+            if replace:
+                st.session_state['df_dados'] = df[cols_to_save].copy()
+            else:
+                st.session_state['df_dados'] = pd.concat([st.session_state['df_dados'], df[cols_to_save]], ignore_index=True)
+            
+            st.sidebar.success(f"✅ Dados atualizados na memória! Baixe o 'dados.db' para persistir.")
         else:
             st.sidebar.error("❌ O arquivo não contém as colunas necessárias.")
     except Exception as e:
         st.sidebar.error(f"❌ Erro ao salvar: {e}")
 
-@st.cache_data
+# Removemos o cache_data aqui pois agora lemos do session_state que é dinâmico
 def load_data(uploaded_file=None):
     df = None
     # 1. Tenta carregar do upload
@@ -78,19 +70,9 @@ def load_data(uploaded_file=None):
         except Exception as e:
             st.error(f"Erro ao ler o arquivo: {e}")
             return None
-    # 2. Tenta carregar do Banco de Dados SQL
+    # 2. Carrega da Memória (Session State)
     else:
-        try:
-            # parse_dates ajuda o pandas a reconhecer datas automaticamente vindo do SQL
-            df = pd.read_sql(f"SELECT * FROM {TABLE_NAME}", con=engine, parse_dates=['DATA'])
-        except Exception as e:
-            error_str = str(e)
-            # Se for erro de tabela inexistente, ignoramos.
-            if "does not exist" in error_str or "no such table" in error_str:
-                return None
-            
-            st.error(f"❌ Erro ao acessar banco de dados local: {e}")
-            return None
+        df = st.session_state['df_dados'].copy()
 
     if df is None:
         return None
@@ -178,13 +160,19 @@ if uploaded_file is not None:
         save_uploaded_data(df, replace=replace_data)
 
 # Botão para baixar o banco de dados atualizado (Para subir no GitHub)
-with open(st.session_state.db_path, "rb") as fp:
-    st.sidebar.download_button(
-        label="📥 Baixar dados.db (Para GitHub)",
-        data=fp,
-        file_name="dados.db",
-        mime="application/x-sqlite3"
-    )
+# Gera o arquivo SQLite a partir do DataFrame da memória
+with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
+    # Cria um banco temporário para exportação
+    temp_engine = create_engine(f"sqlite:///{tmp.name}")
+    st.session_state['df_dados'].to_sql(TABLE_NAME, temp_engine, if_exists='replace', index=False)
+    
+    with open(tmp.name, "rb") as fp:
+        st.sidebar.download_button(
+            label="📥 Baixar dados.db (Para GitHub)",
+            data=fp,
+            file_name="dados.db",
+            mime="application/x-sqlite3"
+        )
 
 st.sidebar.header("Filtros")
 
