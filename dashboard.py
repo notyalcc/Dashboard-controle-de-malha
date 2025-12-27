@@ -54,8 +54,7 @@ def load_data(uploaded_file=None):
         return None
     
     # Padronizar nomes das colunas (remover espaços e maiúsculas) para evitar KeyError
-    if df is not None:
-        df.columns = df.columns.str.strip().str.upper()
+    df.columns = df.columns.str.strip().str.upper()
 
     # Converter coluna DATA para datetime
     if 'DATA' in df.columns:
@@ -198,13 +197,13 @@ with col_r1:
     top_vol = df_filtered.groupby('TRANSPORTADORA')['LIBERADOS'].sum().reset_index().sort_values(by='LIBERADOS', ascending=True)
     fig_top_vol = px.bar(top_vol, x='LIBERADOS', y='TRANSPORTADORA', orientation='h', text_auto=True,
                          title="Top Volume (Liberados)")
-    st.plotly_chart(fig_top_vol, key="rank_vol")
+    st.plotly_chart(fig_top_vol, key="rank_vol", width="stretch")
 
 with col_r2:
     top_malha = df_filtered.groupby('TRANSPORTADORA')['MALHA'].sum().reset_index().sort_values(by='MALHA', ascending=True)
     fig_top_malha = px.bar(top_malha, x='MALHA', y='TRANSPORTADORA', orientation='h', text_auto=True,
                            title="Top Frequência na Malha")
-    st.plotly_chart(fig_top_malha, key="rank_malha")
+    st.plotly_chart(fig_top_malha, key="rank_malha", width="stretch")
 
 # Abas para análises temporais (Dia, Mês, Ano)
 tab_geral, tab_dia, tab_mes, tab_ano = st.tabs(["🔍 Visão Geral", "📅 Visão Diária", "📆 Visão Mensal", "📅 Visão Anual"])
@@ -225,12 +224,12 @@ with tab_geral:
 
     col_g1, col_g2 = st.columns(2)
     with col_g1:
-        fig_vol_dia_g = px.bar(df_dia_geral, x='DATA', y='LIBERADOS', color='TRANSPORTADORA',
+        fig_vol_dia_g = px.bar(df_dia_geral, x='DATA', y='LIBERADOS', color='TRANSPORTADORA',barmode='group',
                              title="Volume Liberado por Dia", 
                              labels={'LIBERADOS': 'Volume', 'DATA': 'Data'},
                              text_auto=True)
         fig_vol_dia_g.update_xaxes(tickformat="%d/%m/%Y")
-        st.plotly_chart(fig_vol_dia_g, key="geral_vol_dia")
+        st.plotly_chart(fig_vol_dia_g, key="geral_vol_dia", width="stretch")
     with col_g2:
         df_dia_malha_g = df_dia_geral.groupby(['DATA', 'TRANSPORTADORA'])['MALHA'].sum().reset_index()
         df_dia_malha_g['MALHA_PCT'] = df_dia_malha_g.groupby('DATA')['MALHA'].transform(lambda x: (x / x.sum() * 100) if x.sum() > 0 else 0)
@@ -239,7 +238,7 @@ with tab_geral:
                                labels={'MALHA_PCT': '% Malha', 'DATA': 'Data'},
                                text_auto='.1f')
         fig_malha_dia_g.update_xaxes(tickformat="%d/%m/%Y")
-        st.plotly_chart(fig_malha_dia_g, key="geral_malha_dia")
+        st.plotly_chart(fig_malha_dia_g, key="geral_malha_dia", width="stretch")
         
     st.markdown("---")
     
@@ -259,13 +258,13 @@ with tab_geral:
     with col_g3:
         fig_vol_mes_g = px.bar(df_mes_g, x='Mês_Ano', y='LIBERADOS', color='TRANSPORTADORA', barmode='group',
                              title="Total Liberados por Mês", text_auto=True)
-        st.plotly_chart(fig_vol_mes_g, key="geral_vol_mes")
+        st.plotly_chart(fig_vol_mes_g, key="geral_vol_mes", width="stretch")
     with col_g4:
         df_mes_g['MALHA_PCT'] = df_mes_g.groupby('Mês_Ano')['MALHA'].transform(lambda x: (x / x.sum() * 100) if x.sum() > 0 else 0)
         fig_malha_mes_g = px.bar(df_mes_g, x='Mês_Ano', y='MALHA_PCT', color='TRANSPORTADORA',
                                title="Share de Malha (%) por Mês",
                                text_auto='.1f')
-        st.plotly_chart(fig_malha_mes_g, key="geral_malha_mes")
+        st.plotly_chart(fig_malha_mes_g, key="geral_malha_mes", width="stretch")
 
     st.markdown("---")
 
@@ -274,7 +273,7 @@ with tab_geral:
     df_ano_g = df_filtered.groupby(['Ano', 'TRANSPORTADORA'])[['LIBERADOS', 'MALHA']].sum().reset_index()
     fig_vol_ano_g = px.bar(df_ano_g, x='Ano', y='LIBERADOS', color='TRANSPORTADORA', barmode='group',
                             title="Total Liberados por Ano", text_auto=True)
-    st.plotly_chart(fig_vol_ano_g, key="geral_vol_ano")
+    st.plotly_chart(fig_vol_ano_g, key="geral_vol_ano", width="stretch")
 
 
 with tab_dia:
@@ -299,7 +298,7 @@ with tab_dia:
                              labels={'LIBERADOS': 'Volume', 'DATA': 'Data'},
                              text_auto=True)
         fig_vol_dia.update_xaxes(tickformat="%d/%m/%Y")
-        st.plotly_chart(fig_vol_dia, key="dia_vol")
+        st.plotly_chart(fig_vol_dia, key="dia_vol", width="stretch")
     
     with col_d2:
         # % Malha (Share)
@@ -311,7 +310,7 @@ with tab_dia:
                                labels={'MALHA_PCT': '% Malha', 'DATA': 'Data'},
                                text_auto='.1f')
         fig_malha_dia.update_xaxes(tickformat="%d/%m/%Y")
-        st.plotly_chart(fig_malha_dia, key="dia_malha")
+        st.plotly_chart(fig_malha_dia, key="dia_malha", width="stretch")
 
 with tab_mes:
     st.subheader("Análise Mensal")
@@ -333,14 +332,14 @@ with tab_mes:
     with col_m1:
         fig_vol_mes = px.bar(df_mes, x='Mês_Ano', y='LIBERADOS', color='TRANSPORTADORA', barmode='group',
                              title="Total Liberados por Mês", text_auto=True)
-        st.plotly_chart(fig_vol_mes, key="mes_vol")
+        st.plotly_chart(fig_vol_mes, key="mes_vol", width="stretch")
     with col_m2:
         # Calcular porcentagem mensal
         df_mes['MALHA_PCT'] = df_mes.groupby('Mês_Ano')['MALHA'].transform(lambda x: (x / x.sum() * 100) if x.sum() > 0 else 0)
         fig_malha_mes = px.bar(df_mes, x='Mês_Ano', y='MALHA_PCT', color='TRANSPORTADORA',
                                title="Share de Malha (%) por Mês",
                                text_auto='.1f')
-        st.plotly_chart(fig_malha_mes, key="mes_malha")
+        st.plotly_chart(fig_malha_mes, key="mes_malha", width="stretch")
 
 with tab_ano:
     st.subheader("Análise Anual")
@@ -351,14 +350,14 @@ with tab_ano:
     with col_a1:
         fig_vol_ano = px.bar(df_ano, x='Ano', y='LIBERADOS', color='TRANSPORTADORA', barmode='group',
                              title="Total Liberados por Ano", text_auto=True)
-        st.plotly_chart(fig_vol_ano, key="ano_vol")
+        st.plotly_chart(fig_vol_ano, key="ano_vol", width="stretch")
     with col_a2:
         # Calcular porcentagem anual
         df_ano['MALHA_PCT'] = df_ano.groupby('Ano')['MALHA'].transform(lambda x: (x / x.sum() * 100) if x.sum() > 0 else 0)
         fig_malha_ano = px.bar(df_ano, x='Ano', y='MALHA_PCT', color='TRANSPORTADORA',
                                title="Share de Malha (%) por Ano",
                                text_auto='.1f')
-        st.plotly_chart(fig_malha_ano, key="ano_malha")
+        st.plotly_chart(fig_malha_ano, key="ano_malha", width="stretch")
 
 # --- 4. TABELA DE DADOS ---
 with st.expander("Ver Dados Detalhados"):
@@ -378,6 +377,7 @@ st.markdown("<div style='text-align: center'>Desenvolvido por <b>Clayton S. Silv
 
 
 #   streamlit run dashboard.py
+
 
 
 
