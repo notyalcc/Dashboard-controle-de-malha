@@ -3,6 +3,8 @@ import pandas as pd
 import plotly.express as px
 import io
 import os
+import socket
+from urllib.parse import urlparse, urlunparse
 from sqlalchemy import create_engine, text
 
 # Configuração da página
@@ -21,7 +23,26 @@ except Exception:
     st.error("A configuração DATABASE_URL não foi encontrada nos segredos (st.secrets).")
     st.stop()
 
-engine = create_engine(DATABASE_URL)
+@st.cache_resource
+def get_database_engine(url):
+    """
+    Cria a engine do banco de dados com cache e força IPv4 para evitar erros de conexão
+    com Supabase em redes que priorizam IPv6 incorretamente.
+    """
+    try:
+        # Tenta resolver o hostname para IPv4 explicitamente
+        parsed = urlparse(url)
+        hostname = parsed.hostname
+        if hostname and not hostname.replace('.', '').isdigit():
+            ip_v4 = socket.gethostbyname(hostname)
+            new_netloc = parsed.netloc.replace(hostname, ip_v4)
+            url = urlunparse(parsed._replace(netloc=new_netloc))
+    except Exception:
+        pass # Se falhar, usa a URL original
+    
+    return create_engine(url, pool_pre_ping=True)
+
+engine = get_database_engine(DATABASE_URL)
 TABLE_NAME = 'performance_logistica'
 
 @st.cache_data
@@ -169,7 +190,7 @@ df_filtered['Ano'] = df_filtered['DATA'].dt.strftime('%Y')
 if logo_image:
     st.image(logo_image, width=200)
 
-st.title("📊 Dashboard Controle de Malha fina e Liberados 2026.")
+st.title("📊 Dashboard de Performance Logística")
 
 # KPIs (Indicadores Chave)
 total_liberados = df_filtered['LIBERADOS'].sum()
@@ -360,6 +381,7 @@ st.markdown("<div style='text-align: center'>Desenvolvido por <b>Clayton S. Silv
 
 
 #   streamlit run dashboard.py
+
 
 
 
