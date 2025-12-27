@@ -3,6 +3,8 @@ import pandas as pd
 import plotly.express as px
 import io
 import os
+import shutil
+import tempfile
 from sqlalchemy import create_engine
 
 # Configuração da página
@@ -14,7 +16,26 @@ st.set_page_config(page_title="Dashboard de Logística", layout="wide")
 
 # ALTERAÇÃO: Mudamos para SQLite (Banco Local) para eliminar erros de rede/Supabase.
 # Isso criará automaticamente um arquivo 'dados.db' na pasta do seu projeto.
-DATABASE_URL = "sqlite:///dados.db"
+
+# Lógica para lidar com ambiente Read-Only (Streamlit Cloud) e persistir na sessão
+if "db_path" not in st.session_state:
+    DB_FILE = 'dados.db'
+    target_path = DB_FILE
+    
+    # Verifica se o arquivo ou diretório são somente-leitura
+    read_only = (os.path.exists(DB_FILE) and not os.access(DB_FILE, os.W_OK)) or \
+                (not os.path.exists(DB_FILE) and not os.access('.', os.W_OK))
+    
+    if read_only:
+        # Cria um diretório temporário e copia o banco para lá
+        temp_dir = tempfile.mkdtemp()
+        target_path = os.path.join(temp_dir, DB_FILE)
+        if os.path.exists(DB_FILE):
+            shutil.copy2(DB_FILE, target_path)
+    
+    st.session_state.db_path = target_path
+
+DATABASE_URL = f"sqlite:///{st.session_state.db_path}"
 
 @st.cache_resource
 def get_database_engine(url):
@@ -152,6 +173,15 @@ if uploaded_file is not None:
     replace_data = st.sidebar.checkbox("Substituir todo o banco de dados", help="Marque para apagar o banco atual e criar um novo com este arquivo.")
     if st.sidebar.button("💾 Converter/Salvar em dados.db"):
         save_uploaded_data(df, replace=replace_data)
+
+# Botão para baixar o banco de dados atualizado (Para subir no GitHub)
+with open(st.session_state.db_path, "rb") as fp:
+    st.sidebar.download_button(
+        label="📥 Baixar dados.db (Para GitHub)",
+        data=fp,
+        file_name="dados.db",
+        mime="application/x-sqlite3"
+    )
 
 st.sidebar.header("Filtros")
 
@@ -401,6 +431,7 @@ st.markdown("<div style='text-align: center'>Desenvolvido por <b>Clayton S. Silv
 
 
 #   streamlit run dashboard.py
+
 
 
 
