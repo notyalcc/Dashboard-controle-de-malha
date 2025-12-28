@@ -1,57 +1,99 @@
-# Dashboard de Performance Logística 🚛📊
+# 📊 Dashboard de Controle Logístico - Malha Fina & Liberados
 
-Este projeto é um dashboard interativo desenvolvido em Python com **Streamlit** para monitoramento e análise de performance logística. Ele permite visualizar indicadores de volume (Liberados) e participação de malha por transportadora, operação e período.
+> **Desenvolvido por:** Clayton S. Silva
+
+Este projeto é um Dashboard interativo desenvolvido em **Python** utilizando **Streamlit** para o monitoramento e auditoria de processos logísticos. O foco principal é a gestão do fluxo de saída de veículos, comparando o volume de **Liberados** (fluxo normal) versus **Malha Fina** (veículos retidos para reconferência/auditoria).
+
+## 🎯 Objetivo
+
+Fornecer uma visão clara e analítica sobre a operação logística, permitindo:
+*   Acompanhamento de KPIs de fluxo e retenção.
+*   Identificação de gargalos e tendências de auditoria.
+*   Rankings de performance por transportadora.
+*   Análises temporais (Diária, Mensal e Anual).
 
 ## 🚀 Funcionalidades
 
-- **KPIs Principais:** Visualização rápida de totais de volume, malha e médias diárias.
-- **Gráficos Interativos:** Análises temporais (Diária, Mensal, Anual) utilizando **Plotly**.
-- **Filtros Dinâmicos:** Segmentação por data, tipo de operação e transportadora.
-- **Banco de Dados Local:** Utiliza **SQLite** para armazenamento persistente dos dados, eliminando dependências de rede complexas.
-- **Conexão Híbrida:** Suporta upload de arquivos (CSV/Excel) e leitura direta do banco de dados local.
-- **Inserção de Dados:** Formulário lateral para cadastro manual de novos registros diretamente no banco de dados.
-- **Rankings:** Top transportadoras por volume e frequência na malha.
+*   **KPIs em Tempo Real:** Visualização imediata do Fluxo Total, Veículos Liberados, Retidos e Taxa de Retenção Global (%).
+*   **Gráficos Interativos (Plotly):**
+    *   Rankings de Volume e Retenção.
+    *   Evolução temporal do fluxo e da taxa de malha.
+    *   Distribuição por Operação e Transportadora (Gráficos de Rosca).
+*   **Gestão de Dados (CRUD):**
+    *   **Importação:** Upload de arquivos `.csv` ou `.xlsx` (Excel).
+    *   **Inserção Manual:** Formulário lateral para adicionar registros individuais.
+    *   **Persistência:** Os dados são salvos automaticamente em um banco de dados local SQLite (`dados.db`).
+    *   **Backup:** Botão para baixar o banco de dados atualizado.
+*   **Filtros Avançados:**
+    *   Filtro global por Período, Operação e Transportadora.
+    *   Filtro independente para análise de um dia específico.
+    *   Seletor de meses para comparação.
+*   **Controle de Acesso:** Sistema de login para proteger funções administrativas (Upload, Edição, Filtros).
 
 ## 🛠️ Tecnologias Utilizadas
 
-- [Python 3.13+](https://www.python.org/)
-- [Streamlit](https://streamlit.io/) - Framework para web apps de dados.
-- [Pandas](https://pandas.pydata.org/) - Manipulação e análise de dados.
-- [Plotly](https://plotly.com/python/) - Visualização de dados.
-- [SQLAlchemy](https://www.sqlalchemy.org/) - ORM e conexão com Banco de Dados SQL.
+-   Python 3.x
+-   Streamlit - Framework para Web Apps de Data Science.
+-   Pandas - Manipulação e análise de dados.
+-   Plotly Express - Visualização de dados interativa.
+-   SQLAlchemy - Integração com banco de dados SQL.
+-   SQLite - Banco de dados local leve.
 
-## 📦 Como rodar localmente
+## 📦 Instalação e Execução Local
 
-1. **Clone o repositório:**
-   ```bash
-   git clone https://github.com/seu-usuario/nome-do-repo.git
-   cd nome-do-repo
-   ```
+Siga os passos abaixo para rodar o projeto na sua máquina:
 
-2. **Instale as dependências:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+1.  **Clone o repositório:**
+    ```bash
+    git clone https://github.com/SEU_USUARIO/NOME_DO_REPOSITORIO.git
+    cd NOME_DO_REPOSITORIO
+    ```
 
-3. **Execute o Dashboard:**
-   O banco de dados `dados.db` será criado automaticamente na primeira execução.
-   ```bash
-   streamlit run dashboard.py
-   ```
+2.  **Crie um ambiente virtual (Opcional, mas recomendado):**
+    ```bash
+    # Windows
+    python -m venv venv
+    .\venv\Scripts\activate
 
-## 📂 Estrutura do Projeto
+    # Linux/Mac
+    python3 -m venv venv
+    source venv/bin/activate
+    ```
 
-- `dashboard.py`: Código principal da aplicação.
-- `dados.db`: Banco de dados SQLite (gerado automaticamente).
-- `requirements.txt`: Lista de dependências do projeto.
+3.  **Instale as dependências:**
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-## ☁️ Deploy
+4.  **Execute o Dashboard:**
+    ```bash
+    streamlit run app.py
+    ```
 
-Para implantar no **Streamlit Community Cloud**:
-1. Suba o código para o GitHub.
-2. Conecte seu repositório no Streamlit Cloud.
-3. **Nota Importante:** Como o projeto utiliza SQLite local (`dados.db`), os dados inseridos manualmente no Cloud **não persistirão** após a reinicialização do app (devido à natureza efêmera do container). Para produção em nuvem com persistência, recomenda-se alterar a string de conexão para um banco externo (ex: PostgreSQL/Supabase).
+5.  **Acesse no navegador:**
+    O app abrirá automaticamente em `http://localhost:8501`.
 
-## 👨‍💻 Autor
+## 🔐 Acesso Administrativo
 
-Desenvolvido por **Clayton S. Silva**
+Para acessar as funcionalidades de edição, upload e filtros na barra lateral, utilize a senha padrão configurada no código:
+*   **Senha:** `0000000`
+
+## ☁️ Como colocar Online (Deploy)
+
+A maneira mais fácil de publicar este dashboard gratuitamente é usando o **Streamlit Cloud**:
+
+1.  Suba este código para um repositório no **GitHub**.
+2.  Crie uma conta no Streamlit Cloud.
+3.  Conecte sua conta do GitHub e selecione o repositório deste projeto.
+4.  O Streamlit detectará automaticamente o arquivo `requirements.txt` e instalará as dependências.
+5.  Pronto! Seu dashboard estará online.
+
+## 📂 Estrutura de Arquivos
+
+*   `app.py`: Código principal da aplicação.
+*   `requirements.txt`: Lista de bibliotecas necessárias.
+*   `dados.db`: Banco de dados SQLite (gerado automaticamente ao rodar o app).
+*   `README.md`: Documentação do projeto.
+
+---
+© 2025 Clayton S. Silva
