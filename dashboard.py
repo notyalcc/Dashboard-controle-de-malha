@@ -434,7 +434,9 @@ with tab_mes:
     
     # Filtro de Meses
     meses_disponiveis = sorted(df_filtered['Mês_Ano'].unique())
-    meses_selecionados = st.multiselect("Selecione os Meses para Visualizar:", options=meses_disponiveis, default=meses_disponiveis)
+    # Define padrão como os últimos 3 meses
+    padrao_meses = meses_disponiveis[-3:] if len(meses_disponiveis) >= 3 else meses_disponiveis
+    meses_selecionados = st.multiselect("Selecione os Meses para Visualizar:", options=meses_disponiveis, default=padrao_meses)
     
     if meses_selecionados:
         df_mes_filtered = df_filtered[df_filtered['Mês_Ano'].isin(meses_selecionados)]
