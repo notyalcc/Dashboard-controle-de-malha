@@ -292,7 +292,7 @@ df_filtered['Ano'] = df_filtered['DATA'].dt.strftime('%Y')
 if logo_image:
     st.image(logo_image, width=200)
 
-st.title("📊 Dashboard Controle de Malha fina e Liberados 2026")
+st.title("📊 Dashboard Controle de Malha fina e Liberados CD-1401.")
 
 # KPIs
 total_liberados = df_filtered['LIBERADOS'].sum()
@@ -512,4 +512,5 @@ st.markdown("<div style='text-align: center'>Desenvolvido por <b>Clayton S. Silv
 
 
 ##  streamlit run app.py
+
 
