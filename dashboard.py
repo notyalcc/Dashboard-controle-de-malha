@@ -351,10 +351,10 @@ with tab_geral:
         st.plotly_chart(fig_vol_dia_g, key="geral_vol_dia", width="stretch")
         st.caption("📊 **Volume Operacional:** Quantidade de veículos liberados dia a dia.")
     with col_g2:
-        df_dia_malha_g = df_dia_geral.groupby(['DATA', 'TRANSPORTADORA'])['MALHA'].sum().reset_index()
-        # Cálculo explícito de Share (%)
-        df_dia_malha_g['TOTAL_DIA'] = df_dia_malha_g.groupby('DATA')['MALHA'].transform('sum')
-        df_dia_malha_g['MALHA_PCT'] = df_dia_malha_g.apply(lambda row: 0 if row['TOTAL_DIA'] == 0 else (row['MALHA'] / row['TOTAL_DIA'] * 100), axis=1)
+        df_dia_malha_g = df_dia_geral.groupby(['DATA', 'TRANSPORTADORA'])[['LIBERADOS', 'MALHA']].sum().reset_index()
+        # Cálculo da Taxa de Retenção (%)
+        df_dia_malha_g['TOTAL_VEICULOS'] = df_dia_malha_g['LIBERADOS'] + df_dia_malha_g['MALHA']
+        df_dia_malha_g['MALHA_PCT'] = df_dia_malha_g.apply(lambda row: 0 if row['TOTAL_VEICULOS'] == 0 else (int((row['MALHA'] / row['TOTAL_VEICULOS'] * 100) * 10 + 0.5) / 10.0), axis=1)
         
         fig_malha_dia_g = px.bar(df_dia_malha_g, x='DATA', y='MALHA_PCT', color='TRANSPORTADORA', title="Taxa de Retenção (Malha Fina) % por Dia")
         fig_malha_dia_g.update_xaxes(tickformat="%d/%m/%Y")
@@ -417,10 +417,10 @@ with tab_dia:
         st.plotly_chart(fig_vol_dia, key="dia_vol", width="stretch")
         st.caption("📊 **Volume:** Quantidade de veículos liberados por dia.")
     with col_d2:
-        df_dia_malha = df_dia_view.groupby(['DATA', 'TRANSPORTADORA'])['MALHA'].sum().reset_index()
-        # Cálculo explícito de Share (%)
-        df_dia_malha['TOTAL_DIA'] = df_dia_malha.groupby('DATA')['MALHA'].transform('sum')
-        df_dia_malha['MALHA_PCT'] = df_dia_malha.apply(lambda row: 0 if row['TOTAL_DIA'] == 0 else (row['MALHA'] / row['TOTAL_DIA'] * 100), axis=1)
+        df_dia_malha = df_dia_view.groupby(['DATA', 'TRANSPORTADORA'])[['LIBERADOS', 'MALHA']].sum().reset_index()
+        # Cálculo da Taxa de Retenção (%)
+        df_dia_malha['TOTAL_VEICULOS'] = df_dia_malha['LIBERADOS'] + df_dia_malha['MALHA']
+        df_dia_malha['MALHA_PCT'] = df_dia_malha.apply(lambda row: 0 if row['TOTAL_VEICULOS'] == 0 else (int((row['MALHA'] / row['TOTAL_VEICULOS'] * 100) * 10 + 0.5) / 10.0), axis=1)
         
         fig_malha_dia = px.bar(df_dia_malha, x='DATA', y='MALHA_PCT', color='TRANSPORTADORA', title="Taxa de Retenção (Malha Fina) % por Dia")
         fig_malha_dia.update_xaxes(tickformat="%d/%m/%Y")
@@ -452,9 +452,9 @@ with tab_mes:
         st.plotly_chart(fig_vol_mes, key="mes_vol", width="stretch")
         st.caption("📊 **Sazonalidade:** Volume acumulado de liberados por mês.")
     with col_m2:
-        # Cálculo explícito de Share (%)
-        df_mes['TOTAL_MES'] = df_mes.groupby('Mês_Ano')['MALHA'].transform('sum')
-        df_mes['MALHA_PCT'] = df_mes.apply(lambda row: 0 if row['TOTAL_MES'] == 0 else (row['MALHA'] / row['TOTAL_MES'] * 100), axis=1)
+        # Cálculo da Taxa de Retenção (%)
+        df_mes['TOTAL_VEICULOS'] = df_mes['LIBERADOS'] + df_mes['MALHA']
+        df_mes['MALHA_PCT'] = df_mes.apply(lambda row: 0 if row['TOTAL_VEICULOS'] == 0 else (int((row['MALHA'] / row['TOTAL_VEICULOS'] * 100) * 10 + 0.5) / 10.0), axis=1)
         
         fig_malha_mes = px.bar(df_mes, x='Mês_Ano', y='MALHA_PCT', color='TRANSPORTADORA', title="Taxa de Retenção (Malha Fina) % por Mês")
         fig_malha_mes.update_traces(texttemplate='%{y:.1f}%', textposition='auto', textfont_size=14)
@@ -473,9 +473,9 @@ with tab_ano:
         st.plotly_chart(fig_vol_ano, key="ano_vol", width="stretch")
         st.caption("📊 **Histórico:** Volume total de liberados por ano.")
     with col_a2:
-        # Cálculo explícito de Share (%)
-        df_ano['TOTAL_ANO'] = df_ano.groupby('Ano')['MALHA'].transform('sum')
-        df_ano['MALHA_PCT'] = df_ano.apply(lambda row: 0 if row['TOTAL_ANO'] == 0 else (row['MALHA'] / row['TOTAL_ANO'] * 100), axis=1)
+        # Cálculo da Taxa de Retenção (%)
+        df_ano['TOTAL_VEICULOS'] = df_ano['LIBERADOS'] + df_ano['MALHA']
+        df_ano['MALHA_PCT'] = df_ano.apply(lambda row: 0 if row['TOTAL_VEICULOS'] == 0 else (int((row['MALHA'] / row['TOTAL_VEICULOS'] * 100) * 10 + 0.5) / 10.0), axis=1)
         
         fig_malha_ano = px.bar(df_ano, x='Ano', y='MALHA_PCT', color='TRANSPORTADORA', title="Taxa de Retenção (Malha Fina) % por Ano")
         fig_malha_ano.update_traces(texttemplate='%{y:.1f}%', textposition='auto', textfont_size=14)
@@ -485,11 +485,23 @@ with tab_ano:
 
 # --- 4. TABELA DE DADOS ---
 with st.expander("Ver Dados Detalhados"):
+    # Prepara dataframe para exibição com cálculos idênticos ao Excel
+    df_display = df_filtered.copy()
+    df_display['TOTAL'] = df_display['LIBERADOS'] + df_display['MALHA']
+    
+    # Aplica a lógica de arredondamento (Round Half Up) para 1 casa decimal
+    df_display['% MALHA'] = df_display.apply(
+        lambda row: 0 if row['TOTAL'] == 0 else (int((row['MALHA'] / row['TOTAL'] * 100) * 10 + 0.5) / 10.0), 
+        axis=1
+    )
+
     st.dataframe(
-        df_filtered.sort_values(by=['DATA', 'TRANSPORTADORA']),
+        df_display.sort_values(by=['DATA', 'TRANSPORTADORA']),
         width="stretch",
         column_config={
-            "DATA": st.column_config.DateColumn("Data", format="DD/MM/YYYY")
+            "DATA": st.column_config.DateColumn("Data", format="DD/MM/YYYY"),
+            "% MALHA": st.column_config.NumberColumn("% Malha", format="%.1f%%"),
+            "TOTAL": st.column_config.NumberColumn("Total", format="%d")
         }
     )
 
