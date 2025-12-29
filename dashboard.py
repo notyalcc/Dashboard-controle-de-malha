@@ -72,7 +72,7 @@ def clean_dataframe(df: pd.DataFrame) -> pd.DataFrame:
             df['DATA'] = df['DATA'].astype(str).str.strip()
             
             # 2. Corrigir erro comum 31/09
-            df['DATA'] = df['DATA'].str.replace('31/09', '30/09', regex=False)
+            #df['DATA'] = df['DATA'].str.replace('31/09', '30/09', regex=False)
             
             # 3. Tentar converter formato padrão (Dia/Mês/Ano)
             # errors='coerce' transforma o que falhar em NaT (Not a Time)
@@ -512,3 +512,4 @@ st.markdown("<div style='text-align: center'>Desenvolvido por <b>Clayton S. Silv
 
 
 ##  streamlit run app.py
+
