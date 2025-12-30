@@ -295,6 +295,14 @@ if acesso_liberado:
 
     st.sidebar.header("Filtros")
 
+    # Filtro de Ano
+    anos_disponiveis = sorted(df['DATA'].dt.year.unique(), reverse=True)
+    anos_selecionados = st.sidebar.multiselect(
+        "Ano",
+        options=anos_disponiveis,
+        default=anos_disponiveis
+    )
+
     # Filtro de Data
     min_date = df['DATA'].min()
     max_date = df['DATA'].max()
@@ -336,12 +344,14 @@ else:
     start_date, end_date = min_date, max_date
     operacoes = df['OPERAÇÃO'].unique()
     transportadoras = df['TRANSPORTADORA'].unique()
+    anos_selecionados = df['DATA'].dt.year.unique()
     
     st.sidebar.info("ℹ️ Faça login para acessar filtros e ferramentas de edição.")
 
 # --- APLICAÇÃO DOS FILTROS ---
 # Aplicar Filtros
 df_filtered = df[
+    (df['DATA'].dt.year.isin(anos_selecionados)) &
     (df['DATA'] >= pd.to_datetime(start_date)) &
     (df['DATA'] <= pd.to_datetime(end_date)) &
     (df['OPERAÇÃO'].isin(operacoes)) &
