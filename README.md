@@ -12,15 +12,33 @@ Este projeto é um dashboard interativo desenvolvido em Python utilizando a bibl
     *   Limpeza automática de dados (tratamento robusto de datas e formatos numéricos).
     *   Persistência de dados local utilizando SQLite (`dados.db`).
     *   Backup e download do banco de dados completo.
+    *   **Atualização Dinâmica:** Botão para recarregar dados do banco sem reiniciar o servidor.
 *   **Visualização e Análise:**
-    *   **KPIs em Tempo Real:** Fluxo total, veículos liberados, retidos e taxa de retenção global.
-    *   **Rankings:** Top transportadoras por volume (fluxo) e por retenção (malha).
-    *   **Visão Temporal:** Gráficos interativos com análises diárias, mensais e anuais.
-    *   **Análise de Risco:** Mapa de calor (Heatmap) por dia da semana e Funil do processo de sorteio.
+    *   **KPIs Inteligentes:** Painel com métricas de Fluxo Total, Liberados, Retidos e Taxa de Retenção Global. Inclui indicadores de variação (Delta) comparando com o período anterior.
+    *   **Rankings Interativos:**
+        *   Top Transportadoras por Volume (Fluxo).
+        *   Top Transportadoras por Retenção (Malha Absoluta).
+    *   **Análise de Risco e Processo:**
+        *   **Funil do Sorteio:** Visualização do gargalo entre veículos na portaria vs. veículos enviados para reconferência.
+        *   **Mapa de Calor (Heatmap):** Identifica padrões de retenção por dia da semana e transportadora.
+    *   **Visão Temporal:**
+        *   **Diária:** Análise granular com filtro independente para isolar dias específicos.
+        *   **Mensal e Anual:** Visão macro para identificar sazonalidade e tendências de longo prazo.
 *   **Relatórios:**
     *   Exportação de dados filtrados para Excel (`.xlsx`) com formatação correta.
 *   **Segurança:**
     *   Sistema de login administrativo para proteger funções de edição e filtros sensíveis.
+
+## 🚛 Entenda o Processo (Malha Fina)
+
+O dashboard foi desenhado para monitorar o seguinte fluxo operacional:
+
+1.  **Carregamento:** A transportadora carrega e segue para a portaria.
+2.  **Sorteio (Portaria):** O veículo passa por um sorteio aleatório.
+3.  **Decisão:**
+    *   🟢 **Liberado:** Segue viagem imediatamente.
+    *   🔴 **Malha:** O veículo é bloqueado e deve retornar ao **Setor de Retorno** para uma nova conferência física.
+4.  **Conclusão:** Após a reconferência, divergências são apontadas ou o veículo é liberado.
 
 ## 🛠️ Tecnologias Utilizadas
 
@@ -68,6 +86,11 @@ A maneira mais fácil de publicar este dashboard gratuitamente é usando o **Str
 *   `dados.db`: Banco de dados SQLite (gerado automaticamente ao rodar o app).
 *   `README.md`: Documentação do projeto.
 
+*   <img width="1913" height="907" alt="image" src="https://github.com/user-attachments/assets/8dc1b973-8253-4a53-abc5-34e56b46a1bc" />
+
+
+
 ---
 © 2025 Clayton S. Silva
+
 
