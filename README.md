@@ -90,16 +90,20 @@ A maneira mais fácil de publicar este dashboard gratuitamente é usando o **Str
 *   `dados.db`: Banco de dados SQLite (gerado automaticamente ao rodar o app).
 *   `README.md`: Documentação do projeto.
 
-*   ![alt text](image-2.png) 
-    ![alt text](image-4.png)
-    ![alt text](image-5.png)
-    ![alt text](image-6.png)
+<img width="1917" height="911" alt="image" src="https://github.com/user-attachments/assets/82a0e4f7-42b1-4cce-af98-b7b45172d087" />
+<img width="1914" height="904" alt="image" src="https://github.com/user-attachments/assets/7802ca5e-c7a0-49b3-96f9-f90bd753db3f" />
+<img width="1918" height="909" alt="image" src="https://github.com/user-attachments/assets/aa1d226e-82e7-4ffd-8b80-ec09715ce864" />
+<img width="1915" height="910" alt="image" src="https://github.com/user-attachments/assets/ae28b4d2-7201-45dc-ad81-cf721c4f7168" />
+
+
+
 
 
 
 
 ---
 © 2025 Clayton S. Silva
+
 
 
 
