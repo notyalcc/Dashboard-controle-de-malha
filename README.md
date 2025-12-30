@@ -13,7 +13,11 @@ Este projeto é um dashboard interativo desenvolvido em Python utilizando a bibl
     *   Persistência de dados local utilizando SQLite (`dados.db`).
     *   Backup e download do banco de dados completo.
     *   **Atualização Dinâmica:** Botão para recarregar dados do banco sem reiniciar o servidor.
+*   **Filtros e Navegação:**
+    *   **Filtro de Ano:** Seletor múltiplo de anos (ex: 2024, 2025) para otimizar a performance e focar a análise em períodos históricos específicos.
+    *   **Refinamento de Dados:** Combinação de filtros por Data, Tipo de Operação e Transportadora.
 *   **Visualização e Análise:**
+    *   **Contexto Visual Dinâmico:** Os títulos dos gráficos e o cabeçalho do dashboard se adaptam automaticamente para exibir o período exato da análise (ex: "01/01 a 31/01"), facilitando a interpretação em reuniões e relatórios.
     *   **KPIs Inteligentes:** Painel com métricas de Fluxo Total, Liberados, Retidos e Taxa de Retenção Global. Inclui indicadores de variação (Delta) comparando com o período anterior.
     *   **Rankings Interativos:**
         *   Top Transportadoras por Volume (Fluxo).
@@ -86,11 +90,16 @@ A maneira mais fácil de publicar este dashboard gratuitamente é usando o **Str
 *   `dados.db`: Banco de dados SQLite (gerado automaticamente ao rodar o app).
 *   `README.md`: Documentação do projeto.
 
-*   <img width="1913" height="907" alt="image" src="https://github.com/user-attachments/assets/8dc1b973-8253-4a53-abc5-34e56b46a1bc" />
+*   ![alt text](image-2.png) 
+    ![alt text](image-4.png)
+    ![alt text](image-5.png)
+    ![alt text](image-6.png)
+
 
 
 
 ---
 © 2025 Clayton S. Silva
+
 
 
