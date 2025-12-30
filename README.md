@@ -1,82 +1,55 @@
-# 📊 Dashboard de Controle Logístico - Malha Fina & Liberados
+# Dashboard de Controle Logístico - Malha Fina & Liberados 2026
 
-> **Desenvolvido por:** Clayton S. Silva
+Este projeto é um dashboard interativo desenvolvido em Python utilizando a biblioteca **Streamlit**. O objetivo é monitorar e analisar o processo de auditoria logística (Malha Fina), permitindo o acompanhamento do fluxo de veículos liberados e retidos para conferência.
 
-Este projeto é um Dashboard interativo desenvolvido em **Python** utilizando **Streamlit** para o monitoramento e auditoria de processos logísticos. O foco principal é a gestão do fluxo de saída de veículos, comparando o volume de **Liberados** (fluxo normal) versus **Malha Fina** (veículos retidos para reconferência/auditoria).
+**Desenvolvido por:** Clayton S. Silva
 
-## 🎯 Objetivo
+## 📋 Funcionalidades
 
-Fornecer uma visão clara e analítica sobre a operação logística, permitindo:
-*   Acompanhamento de KPIs de fluxo e retenção.
-*   Identificação de gargalos e tendências de auditoria.
-*   Rankings de performance por transportadora.
-*   Análises temporais (Diária, Mensal e Anual).
-
-## 🚀 Funcionalidades
-
-*   **KPIs em Tempo Real:** Visualização imediata do Fluxo Total, Veículos Liberados, Retidos e Taxa de Retenção Global (%).
-*   **Gráficos Interativos (Plotly):**
-    *   Rankings de Volume e Retenção.
-    *   Evolução temporal do fluxo e da taxa de malha.
-    *   Distribuição por Operação e Transportadora (Gráficos de Rosca).
-*   **Gestão de Dados (CRUD):**
-    *   **Importação:** Upload de arquivos `.csv` ou `.xlsx` (Excel).
-    *   **Inserção Manual:** Formulário lateral para adicionar registros individuais.
-    *   **Persistência:** Os dados são salvos automaticamente em um banco de dados local SQLite (`dados.db`).
-    *   **Backup:** Botão para baixar o banco de dados atualizado.
-*   **Filtros Avançados:**
-    *   Filtro global por Período, Operação e Transportadora.
-    *   Filtro independente para análise de um dia específico.
-    *   Seletor de meses para comparação.
-*   **Controle de Acesso:** Sistema de login para proteger funções administrativas (Upload, Edição, Filtros).
+*   **Gestão de Dados:**
+    *   Importação de arquivos (CSV, Excel, SQLite).
+    *   Inserção manual de registros via formulário na barra lateral.
+    *   Limpeza automática de dados (tratamento robusto de datas e formatos numéricos).
+    *   Persistência de dados local utilizando SQLite (`dados.db`).
+    *   Backup e download do banco de dados completo.
+*   **Visualização e Análise:**
+    *   **KPIs em Tempo Real:** Fluxo total, veículos liberados, retidos e taxa de retenção global.
+    *   **Rankings:** Top transportadoras por volume (fluxo) e por retenção (malha).
+    *   **Visão Temporal:** Gráficos interativos com análises diárias, mensais e anuais.
+    *   **Análise de Risco:** Mapa de calor (Heatmap) por dia da semana e Funil do processo de sorteio.
+*   **Relatórios:**
+    *   Exportação de dados filtrados para Excel (`.xlsx`) com formatação correta.
+*   **Segurança:**
+    *   Sistema de login administrativo para proteger funções de edição e filtros sensíveis.
 
 ## 🛠️ Tecnologias Utilizadas
 
--   Python 3.x
--   Streamlit - Framework para Web Apps de Data Science.
--   Pandas - Manipulação e análise de dados.
--   Plotly Express - Visualização de dados interativa.
--   SQLAlchemy - Integração com banco de dados SQL.
--   SQLite - Banco de dados local leve.
+*   **Python 3**
+*   **Streamlit:** Interface web interativa e responsiva.
+*   **Pandas:** Manipulação e análise de dados de alta performance.
+*   **Plotly Express:** Gráficos dinâmicos e interativos.
+*   **SQLAlchemy / SQLite:** Gerenciamento de banco de dados local.
+*   **OpenPyXL:** Suporte para leitura e escrita de arquivos Excel.
 
-## 📦 Instalação e Execução Local
+## 🚀 Como Executar
 
-Siga os passos abaixo para rodar o projeto na sua máquina:
-
-1.  **Clone o repositório:**
-    ```bash
-    git clone https://github.com/SEU_USUARIO/NOME_DO_REPOSITORIO.git
-    cd NOME_DO_REPOSITORIO
-    ```
-
-2.  **Crie um ambiente virtual (Opcional, mas recomendado):**
-    ```bash
-    # Windows
-    python -m venv venv
-    .\venv\Scripts\activate
-
-    # Linux/Mac
-    python3 -m venv venv
-    source venv/bin/activate
-    ```
-
-3.  **Instale as dependências:**
+1.  **Instale as dependências:**
+    Certifique-se de ter o Python instalado e execute o comando abaixo na pasta do projeto:
     ```bash
     pip install -r requirements.txt
     ```
 
-4.  **Execute o Dashboard:**
+2.  **Execute a aplicação:**
     ```bash
     streamlit run app.py
     ```
 
-5.  **Acesse no navegador:**
-    O app abrirá automaticamente em `http://localhost:8501`.
+3.  **Acesse no navegador:**
+    O Streamlit abrirá automaticamente uma aba no seu navegador (geralmente em `http://localhost:8501`).
 
 ## 🔐 Acesso Administrativo
 
-Para acessar as funcionalidades de edição, upload e filtros na barra lateral, utilize a senha padrão configurada no código:
-*   **Senha:** `0000000`
+Para acessar as funcionalidades de edição, inserção manual e download de relatórios, utilize a senha de administrador configurada no código (Padrão: `admin123`).
 
 ## ☁️ Como colocar Online (Deploy)
 
@@ -97,3 +70,4 @@ A maneira mais fácil de publicar este dashboard gratuitamente é usando o **Str
 
 ---
 © 2025 Clayton S. Silva
+
