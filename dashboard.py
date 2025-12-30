@@ -4,11 +4,11 @@ import plotly.express as px
 import io
 import os
 import tempfile
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect
 from pandas.api.types import is_datetime64_any_dtype
 
 # --- Configuração da Página ---
-st.set_page_config(page_title="Dashboard de Logística", layout="wide")
+st.set_page_config(page_title="Dashboard de Logística", page_icon="🚚", layout="wide")
 
 # --- 1. CARREGAMENTO E TRATAMENTO DE DADOS ---
 
@@ -16,6 +16,8 @@ st.set_page_config(page_title="Dashboard de Logística", layout="wide")
 DATABASE_URL = "sqlite:///dados.db"
 TABLE_NAME = 'performance_logistica'
 
+# @st.cache_resource: Otimização de performance.
+# Mantém a conexão com o banco aberta na memória para não reconectar a cada clique do usuário.
 @st.cache_resource
 def get_database_engine(url):
     return create_engine(url)
@@ -23,6 +25,8 @@ def get_database_engine(url):
 engine = get_database_engine(DATABASE_URL)
 
 # --- INICIALIZAÇÃO DOS DADOS NA MEMÓRIA (SESSION STATE) ---
+# O Session State é a "memória de curto prazo" do usuário.
+# Usamos isso para que os dados não sumam quando o usuário clica em um filtro.
 if 'df_dados' not in st.session_state:
     try:
         # Lê do banco local
@@ -36,6 +40,7 @@ if 'df_dados' not in st.session_state:
         # Se der erro (ex: banco não existe), inicia vazio
         st.session_state['df_dados'] = pd.DataFrame(columns=['DATA', 'TRANSPORTADORA', 'OPERAÇÃO', 'LIBERADOS', 'MALHA'])
 
+# Função para salvar dados carregados via Upload no banco de dados persistente
 def save_uploaded_data(df, replace=False):
     try:
         # Colunas esperadas
@@ -60,6 +65,7 @@ def save_uploaded_data(df, replace=False):
     except Exception as e:
         st.sidebar.error(f"❌ Erro ao salvar: {e}")
 
+# Função CRÍTICA: Limpeza de dados. É aqui que corrigimos erros comuns de digitação e formatação.
 def clean_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     """Realiza a limpeza e padronização dos dados."""
     # Padronizar nomes das colunas
@@ -72,7 +78,7 @@ def clean_dataframe(df: pd.DataFrame) -> pd.DataFrame:
             df['DATA'] = df['DATA'].astype(str).str.strip()
             
             # 2. Corrigir erro comum 31/09
-            #df['DATA'] = df['DATA'].str.replace('31/09', '30/09', regex=False)
+            df['DATA'] = df['DATA'].str.replace('31/09', '30/09', regex=False)
             
             # 3. Tentar converter formato padrão (Dia/Mês/Ano)
             # errors='coerce' transforma o que falhar em NaT (Not a Time)
@@ -107,6 +113,7 @@ def clean_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     
     return df
 
+# Função robusta para ler diferentes tipos de arquivo (CSV, Excel, SQLite)
 def load_data(uploaded_file=None):
     df = None
     # 1. Tenta carregar do upload
@@ -114,6 +121,7 @@ def load_data(uploaded_file=None):
         try:
             if uploaded_file.name.endswith('.csv'):
                 # Lógica robusta para CSV (ponto e vírgula ou vírgula)
+                # Tenta ler com ';', se falhar (poucas colunas), tenta com ','
                 try:
                     df = pd.read_csv(uploaded_file, sep=';')
                     if df.shape[1] < 2:
@@ -122,6 +130,35 @@ def load_data(uploaded_file=None):
                 except:
                     uploaded_file.seek(0)
                     df = pd.read_csv(uploaded_file, sep=None, engine='python')
+            elif uploaded_file.name.endswith('.db'):
+                with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
+                    tmp.write(uploaded_file.getvalue())
+                    tmp_path = tmp.name
+                
+                try:
+                    temp_engine = create_engine(f"sqlite:///{tmp_path}")
+                    inspector = inspect(temp_engine)
+                    tables = inspector.get_table_names()
+                    # Remove tabelas internas do SQLite se existirem
+                    tables = [t for t in tables if t != 'sqlite_sequence']
+                    
+                    if tables:
+                        # Tenta achar a tabela pelo nome (ignorando maiúsculas/minúsculas) ou pega a primeira
+                        target_table = next((t for t in tables if t.lower() == TABLE_NAME.lower()), tables[0])
+                        
+                        # Identifica colunas de data para leitura correta (igual ao carregamento local)
+                        columns_info = inspector.get_columns(target_table)
+                        date_cols = [c['name'] for c in columns_info if c['name'].upper() == 'DATA']
+                        
+                        df = pd.read_sql(f"SELECT * FROM '{target_table}'", con=temp_engine, parse_dates=date_cols)
+                    else:
+                        st.error("O arquivo .db não contém tabelas de dados válidas.")
+                    temp_engine.dispose()
+                except Exception as e:
+                    st.error(f"Erro ao ler o arquivo .db: {e}")
+                finally:
+                    if os.path.exists(tmp_path):
+                        os.remove(tmp_path)
             else:
                 df = pd.read_excel(uploaded_file)
         except Exception as e:
@@ -136,6 +173,23 @@ def load_data(uploaded_file=None):
         df = clean_dataframe(df)
 
     return df
+
+# --- FUNÇÕES AUXILIARES DE CÁLCULO ---
+def calculate_retention_rate(row):
+    """Calcula a taxa de retenção: (Malha / Total Geral) * 100."""
+    total = row['LIBERADOS'] + row['MALHA']
+    if total == 0: return 0.0
+    return round((row['MALHA'] / total) * 100, 2)
+
+# --- NOVA FUNÇÃO: EXPORTAR PARA EXCEL ---
+@st.cache_data
+def convert_df_to_excel(df):
+    """Converte o DataFrame filtrado para um arquivo Excel em memória."""
+    output = io.BytesIO()
+    # Engine 'openpyxl' é necessária para escrever .xlsx
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Relatorio')
+    return output.getvalue()
 
 # --- 2. BARRA LATERAL (UPLOAD E FILTROS) ---
 
@@ -155,6 +209,7 @@ else:
     st.sidebar.image("https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExNzVseGVsdWtocmNidGU3MDZtYzdmcm1kMzMxM3VhZGJjYzJuNGZiMSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/hR12JVvN9GftOzxqGd/giphy.gif", width=150)
 
 # --- SISTEMA DE LOGIN (BARRA LATERAL) ---
+# Controla se o usuário pode editar dados ou apenas visualizar
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
 
@@ -181,12 +236,12 @@ uploaded_file = None
 
 if acesso_liberado:
     st.sidebar.header("Importar Dados")
-    uploaded_file = st.sidebar.file_uploader("Carregar arquivo (CSV ou Excel)", type=['csv', 'xlsx'])
+    uploaded_file = st.sidebar.file_uploader("Carregar arquivo (CSV, Excel ou DB)", type=['csv', 'xlsx', 'db'])
 
     # --- FORMULÁRIO DE INSERÇÃO ---
     st.sidebar.markdown("---")
     st.sidebar.header("Inserir Dados Manualmente")
-    with st.sidebar.form("form_insercao"):
+    with st.sidebar.form("form_insercao", clear_on_submit=True):
         f_data = st.date_input("Data", format="DD/MM/YYYY")
         f_transp = st.text_input("Transportadora")
         f_op = st.selectbox("Operação", ["LML", "Direta", "Reversa", "Outros"])
@@ -196,18 +251,21 @@ if acesso_liberado:
         btn_salvar = st.form_submit_button("Salvar Registro")
         
         if btn_salvar:
-            new_row = {'DATA': [pd.to_datetime(f_data)], 'TRANSPORTADORA': [f_transp], 'LIBERADOS': [f_lib], 'MALHA': [f_malha], 'OPERAÇÃO': [f_op]}
-            df_new = pd.DataFrame(new_row)
-            
-            try:
-                # Salva no banco de dados
-                df_new.to_sql(TABLE_NAME, engine, if_exists='append', index=False)
-                # Atualiza session state
-                st.session_state['df_dados'] = pd.concat([st.session_state['df_dados'], df_new], ignore_index=True)
-                st.success("Salvo no Banco de Dados com sucesso!")
-                st.rerun()
-            except Exception as e:
-                st.error(f"Erro ao salvar no banco: {e}")
+            if not f_transp:
+                st.sidebar.warning("⚠️ O campo 'Transportadora' é obrigatório.")
+            else:
+                new_row = {'DATA': [pd.to_datetime(f_data)], 'TRANSPORTADORA': [f_transp], 'LIBERADOS': [f_lib], 'MALHA': [f_malha], 'OPERAÇÃO': [f_op]}
+                df_new = pd.DataFrame(new_row)
+                
+                try:
+                    # Salva no banco de dados
+                    df_new.to_sql(TABLE_NAME, engine, if_exists='append', index=False)
+                    # Atualiza session state
+                    st.session_state['df_dados'] = pd.concat([st.session_state['df_dados'], df_new], ignore_index=True)
+                    st.success("Salvo no Banco de Dados com sucesso!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Erro ao salvar no banco: {e}")
 
 df = load_data(uploaded_file)
 
@@ -276,6 +334,7 @@ else:
     
     st.sidebar.info("ℹ️ Faça login para acessar filtros e ferramentas de edição.")
 
+# --- APLICAÇÃO DOS FILTROS ---
 # Aplicar Filtros
 df_filtered = df[
     (df['DATA'] >= pd.to_datetime(start_date)) &
@@ -288,11 +347,52 @@ df_filtered = df[
 df_filtered['Mês_Ano'] = df_filtered['DATA'].dt.strftime('%Y-%m')
 df_filtered['Ano'] = df_filtered['DATA'].dt.strftime('%Y')
 
+# --- NOVA FUNCIONALIDADE: BOTÃO DE DOWNLOAD DO RELATÓRIO FILTRADO ---
+if acesso_liberado and not df_filtered.empty:
+    st.sidebar.markdown("---")
+    st.sidebar.header("📥 Exportar Relatório")
+    excel_data = convert_df_to_excel(df_filtered)
+    st.sidebar.download_button(
+        label="Baixar Dados Filtrados (.xlsx)",
+        data=excel_data,
+        file_name="relatorio_logistica_filtrado.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
 # --- 3. DASHBOARD PRINCIPAL ---
 if logo_image:
     st.image(logo_image, width=200)
 
-st.title("📊 Dashboard Controle de Malha fina e Liberados CD-1401.")
+# --- ANIMAÇÃO CAMINHÃO ---
+st.markdown("""
+<style>
+@keyframes drive {
+    0% { margin-left: 100%; }
+    100% { margin-left: -100px; }
+}
+.truck-anim {
+    font-size: 40px;
+    animation: drive 15s linear infinite;
+}
+</style>
+<div style="width: 100%; overflow: hidden;">
+    <div class="truck-anim">🚚</div>
+</div>
+""", unsafe_allow_html=True)    
+
+st.title("📊 Dashboard Controle de Malha fina e Liberados 2026")
+
+
+
+# --- CONTEXTO DO PROCESSO (NOVO) ---
+with st.expander("ℹ️ Entenda o Processo de Malha Fina (Auditoria)"):
+    st.markdown("""
+    **Objetivo:** Inibir procedimentos fora do padrão e garantir a acuracidade da carga.
+    
+    1. **Carregamento:** O veículo é carregado e segue para a portaria.
+    2. **Sorteio Aleatório:** Na saída, o sistema define o status do veículo.
+    3. **Resultado:** 🟢 **Liberado** (Segue viagem) ou 🔴 **Malhou** (Retorna para reconferência física).
+    """)
 
 # KPIs
 total_liberados = df_filtered['LIBERADOS'].sum()
@@ -328,55 +428,132 @@ with col_r2:
     st.plotly_chart(fig_top_malha, key="rank_malha", width="stretch")
     st.caption("📝 **Retenção:** Quantidade absoluta de veículos parados para auditoria (Malha Fina).")
 
+with st.expander("💡 Guia Rápido: Como ler os Rankings?"):
+    st.markdown("""
+    *   **Ranking de Fluxo:** Mostra quem opera mais. Útil para dimensionar recursos de pátio e conferentes.
+    *   **Ranking de Retenção:** Mostra quem mais cai na malha em **números absolutos**. 
+        *   ⚠️ *Atenção:* Uma transportadora pode estar no topo aqui apenas porque tem muito volume. Para ver quem tem a *pior performance relativa* (quem "falha" mais proporcionalmente), consulte os gráficos de **Taxa de Retenção (%)** nas abas abaixo.
+    """)
+
 # Abas para análises
-tab_geral, tab_dia, tab_mes, tab_ano = st.tabs(["🔍 Visão Geral", "📅 Visão Diária", "📆 Visão Mensal", "📅 Visão Anual"])
+tab_geral, tab_dia, tab_mes, tab_ano = st.tabs(["🔍 Visão Geral & Risco", "📅 Visão Diária", "📆 Visão Mensal", "📅 Visão Anual"])
 
 with tab_geral:
     st.subheader("Visão Geral Integrada")
     
-    # Filtro Semana Atual
-    filtrar_semana_g = st.checkbox("Filtrar Semana Atual", value=True, key="chk_semana_geral")
-    df_dia_geral = df_filtered.copy()
-    if filtrar_semana_g and not df_dia_geral.empty:
-        max_date_g = df_dia_geral['DATA'].max()
-        start_of_week_g = max_date_g - pd.Timedelta(days=max_date_g.weekday())
-        df_dia_geral = df_dia_geral[df_dia_geral['DATA'] >= start_of_week_g]
+    # --- NOVO GRÁFICO: FUNIL DO PROCESSO ---
+    # Mostra visualmente o "Sorteio"
+    col_funnel, col_heatmap = st.columns(2)
+    
+    with col_funnel:
+        st.markdown("##### 🎲 Fluxo do Sorteio (Funil)")
+        data_funnel = dict(
+            number=[total_veiculos, total_liberados, total_malha],
+            stage=["Veículos na Portaria", "🟢 Liberados (Viagem)", "🔴 Retidos (Malha Fina)"]
+        )
+        fig_funnel = px.funnel(data_funnel, x='number', y='stage', color='stage', 
+                               color_discrete_map={"Veículos na Portaria": "#2E86C1", "🟢 Liberados (Viagem)": "#27AE60", "🔴 Retidos (Malha Fina)": "#C0392B"})
+        fig_funnel.update_layout(showlegend=False, template="plotly_white")
+        st.plotly_chart(fig_funnel, width="stretch")
+
+    with col_heatmap:
+        st.markdown("##### 🔥 Mapa de Calor: Risco por Dia da Semana")
+        # Prepara dados para heatmap: Dia da Semana x Transportadora
+        df_heat = df_filtered.copy()
+        df_heat['Dia_Semana'] = df_heat['DATA'].dt.day_name()
+        # Traduzir dias se necessário, ou usar ordem
+        order_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        df_heat_group = df_heat.groupby(['Dia_Semana', 'TRANSPORTADORA'])[['LIBERADOS', 'MALHA']].sum().reset_index()
+        
+        # Calcula % usando a função auxiliar
+        df_heat_group['MALHA_PCT'] = df_heat_group.apply(calculate_retention_rate, axis=1)
+        
+        fig_heat = px.density_heatmap(df_heat_group, x='Dia_Semana', y='TRANSPORTADORA', z='MALHA_PCT', 
+                                      category_orders={"Dia_Semana": order_days},
+                                      color_continuous_scale='Reds', title="Intensidade de Retenção (%)")
+        fig_heat.update_layout(template="plotly_white")
+        st.plotly_chart(fig_heat, width="stretch")
+
+    with st.expander("💡 Análise de Risco e Fluxo (Como interpretar?)"):
+        st.markdown("""
+        *   **Fluxo do Sorteio (Funil):** Visualiza a eficiência global. Se a base vermelha (Retidos) estiver muito larga, indica um alto índice de paradas, o que pode impactar a fila de saída e o tempo de permanência.
+        *   **Mapa de Calor (Heatmap):** Ferramenta poderosa para identificar **padrões viciados**.
+            *   **Cor Escura:** Indica alta taxa de retenção (%) naquele dia da semana para aquela transportadora.
+            *   **O que buscar:** Se uma transportadora apresenta cor escura sempre no mesmo dia (ex: toda Sexta-feira), investigue se há um problema recorrente na equipe de expedição ou processo desse dia específico.
+        """)
+
+    st.markdown("---")
+    
+    # Filtro de Data Específico para a Visão Geral (Padrão: Últimos 5 dias)
+    df_geral_view = df_filtered.copy()
+    if not df_filtered.empty:
+        max_date_g = df_filtered['DATA'].max()
+        min_date_g = df_filtered['DATA'].min()
+        # Define padrão: últimos 5 dias
+        default_start = max_date_g - pd.Timedelta(days=4)
+        if default_start < min_date_g: default_start = min_date_g
+        
+        dates_g = st.date_input(
+            "📅 Filtrar Período (Gráficos Diários)",
+            value=[default_start, max_date_g],
+            min_value=min_date_g,
+            max_value=max_date_g,
+            key="filter_geral_dates"
+        )
+        
+        if len(dates_g) == 2:
+            df_geral_view = df_filtered[(df_filtered['DATA'] >= pd.to_datetime(dates_g[0])) & (df_filtered['DATA'] <= pd.to_datetime(dates_g[1]))]
 
     col_g1, col_g2 = st.columns(2)
     with col_g1:
-        fig_vol_dia_g = px.bar(df_dia_geral, x='DATA', y='LIBERADOS', color='TRANSPORTADORA', barmode='group', title="Fluxo de Saída (Liberados) por Dia", text_auto=True)
+        fig_vol_dia_g = px.bar(df_geral_view, x='DATA', y='LIBERADOS', color='TRANSPORTADORA', barmode='group', title="Fluxo de Saída (Liberados) por Dia", text_auto=True)
         fig_vol_dia_g.update_xaxes(tickformat="%d/%m/%Y")
         fig_vol_dia_g.update_traces(textfont_size=14)
         fig_vol_dia_g.update_layout(template="plotly_white", xaxis_title="Data", yaxis_title="Volume")
         st.plotly_chart(fig_vol_dia_g, key="geral_vol_dia", width="stretch")
         st.caption("📊 **Volume Operacional:** Quantidade de veículos liberados dia a dia.")
     with col_g2:
-        df_dia_malha_g = df_dia_geral.groupby(['DATA', 'TRANSPORTADORA'])[['LIBERADOS', 'MALHA']].sum().reset_index()
-        # Cálculo da Taxa de Retenção (%)
-        df_dia_malha_g['TOTAL_VEICULOS'] = df_dia_malha_g['LIBERADOS'] + df_dia_malha_g['MALHA']
-        df_dia_malha_g['MALHA_PCT'] = df_dia_malha_g.apply(lambda row: 0 if row['TOTAL_VEICULOS'] == 0 else (int((row['MALHA'] / row['TOTAL_VEICULOS'] * 100) * 10 + 0.5) / 10.0), axis=1)
+        df_dia_malha_g = df_geral_view.groupby(['DATA', 'TRANSPORTADORA'])[['LIBERADOS', 'MALHA']].sum().reset_index()
+        # Cálculo da Taxa de Retenção (%) usando função auxiliar
+        df_dia_malha_g['MALHA_PCT'] = df_dia_malha_g.apply(calculate_retention_rate, axis=1)
         
         fig_malha_dia_g = px.bar(df_dia_malha_g, x='DATA', y='MALHA_PCT', color='TRANSPORTADORA', title="Taxa de Retenção (Malha Fina) % por Dia")
         fig_malha_dia_g.update_xaxes(tickformat="%d/%m/%Y")
-        fig_malha_dia_g.update_traces(texttemplate='%{y:.1f}%', textposition='auto', textfont_size=14)
+        fig_malha_dia_g.update_traces(texttemplate='%{y:.2f}%', textposition='auto', textfont_size=14)
         fig_malha_dia_g.update_layout(template="plotly_white", xaxis_title="Data", yaxis_title="Retenção (%)")
         st.plotly_chart(fig_malha_dia_g, key="geral_malha_dia", width="stretch")
         st.caption("🛡️ **Intensidade da Fiscalização:** Porcentagem de veículos auditados em relação ao total de saídas.")
     
+    with st.expander("💡 Análise de Tendência Diária (O que observar?)"):
+        st.markdown("""
+        *   **Fluxo de Saída (Volume):** Monitore a estabilidade da operação. Quedas bruscas podem indicar problemas operacionais (sistema fora do ar, falta de carga).
+        *   **Taxa de Retenção (%):**
+            *   **Estabilidade:** O ideal é que a taxa oscile dentro de uma margem esperada (ex: meta de 5% a 10%).
+            *   **Picos:** Um pico repentino (ex: >15%) indica atuação forte do sorteio ou problemas na qualidade da carga naquele dia.
+            *   **Zeros:** Dias com 0% de malha (tendo volume de saída) podem indicar falha no sistema de sorteio aleatório.
+        """)
+
     st.markdown("---")
     st.subheader("Distribuição Operacional")
     col_g3, col_g4 = st.columns(2)
     with col_g3:
-        fig_pie_op = px.pie(df_dia_geral, names='OPERAÇÃO', values='LIBERADOS', title="Volume por Operação", hole=0.4)
+        fig_pie_op = px.pie(df_filtered, names='OPERAÇÃO', values='LIBERADOS', title="Volume por Operação", hole=0.4)
         fig_pie_op.update_traces(textinfo='percent+label')
         st.plotly_chart(fig_pie_op, key="pie_op", width="stretch")
     with col_g4:
-        fig_pie_transp = px.pie(df_dia_geral, names='TRANSPORTADORA', values='LIBERADOS', title="Share de Volume por Transportadora", hole=0.4)
+        fig_pie_transp = px.pie(df_filtered, names='TRANSPORTADORA', values='LIBERADOS', title="Share de Volume por Transportadora", hole=0.4)
         fig_pie_transp.update_traces(textinfo='percent+label', textposition='inside')
         st.plotly_chart(fig_pie_transp, key="pie_transp", width="stretch")
+    
+    with st.expander("💡 Análise de Distribuição"):
+        st.markdown("""
+        *   **Por Operação:** Verifica se o esforço de fiscalização está proporcional ao volume de cada tipo de operação (LML, Direta, etc.).
+        *   **Share de Transportadora:** Mostra a representatividade de cada empresa. Transportadoras com maior fatia do gráfico devem ter atenção redobrada, pois qualquer desvio impacta muito o resultado global da unidade.
+        """)
 
 with tab_dia:
     st.subheader("Análise Diária")
+    st.markdown("ℹ️ *Esta visão permite isolar dias específicos para entender o que aconteceu em datas com anomalias identificadas na Visão Geral.*")
     
     # Filtro Independente
     modo_filtro = st.radio("Modo de Visualização:", ["Semana Atual (Automático)", "Selecionar Dia Específico (Independente)"], horizontal=True)
@@ -418,19 +595,19 @@ with tab_dia:
         st.caption("📊 **Volume:** Quantidade de veículos liberados por dia.")
     with col_d2:
         df_dia_malha = df_dia_view.groupby(['DATA', 'TRANSPORTADORA'])[['LIBERADOS', 'MALHA']].sum().reset_index()
-        # Cálculo da Taxa de Retenção (%)
-        df_dia_malha['TOTAL_VEICULOS'] = df_dia_malha['LIBERADOS'] + df_dia_malha['MALHA']
-        df_dia_malha['MALHA_PCT'] = df_dia_malha.apply(lambda row: 0 if row['TOTAL_VEICULOS'] == 0 else (int((row['MALHA'] / row['TOTAL_VEICULOS'] * 100) * 10 + 0.5) / 10.0), axis=1)
+        # Cálculo da Taxa de Retenção (%) usando função auxiliar
+        df_dia_malha['MALHA_PCT'] = df_dia_malha.apply(calculate_retention_rate, axis=1)
         
         fig_malha_dia = px.bar(df_dia_malha, x='DATA', y='MALHA_PCT', color='TRANSPORTADORA', title="Taxa de Retenção (Malha Fina) % por Dia")
         fig_malha_dia.update_xaxes(tickformat="%d/%m/%Y")
-        fig_malha_dia.update_traces(texttemplate='%{y:.1f}%', textposition='auto', textfont_size=14)
+        fig_malha_dia.update_traces(texttemplate='%{y:.2f}%', textposition='auto', textfont_size=14)
         fig_malha_dia.update_layout(template="plotly_white", xaxis_title="Data", yaxis_title="Retenção (%)")
         st.plotly_chart(fig_malha_dia, key="dia_malha", width="stretch")
         st.caption("🛡️ **Auditoria:** % de veículos retidos sobre o total.")
 
 with tab_mes:
     st.subheader("Análise Mensal")
+    st.markdown("ℹ️ *Utilize esta visão para identificar sazonalidade (meses de pico) e se a performance das transportadoras está sendo Liberada ou seguindo a malha ao longo do ano.*")
     
     # Filtro de Meses
     meses_disponiveis = sorted(df_filtered['Mês_Ano'].unique())
@@ -452,18 +629,18 @@ with tab_mes:
         st.plotly_chart(fig_vol_mes, key="mes_vol", width="stretch")
         st.caption("📊 **Sazonalidade:** Volume acumulado de liberados por mês.")
     with col_m2:
-        # Cálculo da Taxa de Retenção (%)
-        df_mes['TOTAL_VEICULOS'] = df_mes['LIBERADOS'] + df_mes['MALHA']
-        df_mes['MALHA_PCT'] = df_mes.apply(lambda row: 0 if row['TOTAL_VEICULOS'] == 0 else (int((row['MALHA'] / row['TOTAL_VEICULOS'] * 100) * 10 + 0.5) / 10.0), axis=1)
+        # Cálculo da Taxa de Retenção (%) usando função auxiliar
+        df_mes['MALHA_PCT'] = df_mes.apply(calculate_retention_rate, axis=1)
         
         fig_malha_mes = px.bar(df_mes, x='Mês_Ano', y='MALHA_PCT', color='TRANSPORTADORA', title="Taxa de Retenção (Malha Fina) % por Mês")
-        fig_malha_mes.update_traces(texttemplate='%{y:.1f}%', textposition='auto', textfont_size=14)
+        fig_malha_mes.update_traces(texttemplate='%{y:.2f}%', textposition='auto', textfont_size=14)
         fig_malha_mes.update_layout(template="plotly_white", xaxis_title="Mês", yaxis_title="Retenção (%)")
         st.plotly_chart(fig_malha_mes, key="mes_malha", width="stretch")
         st.caption("🛡️ **Tendência:** Variação mensal da taxa de retenção na malha fina.")
 
 with tab_ano:
     st.subheader("Análise Anual")
+    st.markdown("ℹ️ *Visão consolidada para relatórios gerenciais de longo prazo.*")
     df_ano = df_filtered.groupby(['Ano', 'TRANSPORTADORA'])[['LIBERADOS', 'MALHA']].sum().reset_index()
     col_a1, col_a2 = st.columns(2)
     with col_a1:
@@ -473,12 +650,11 @@ with tab_ano:
         st.plotly_chart(fig_vol_ano, key="ano_vol", width="stretch")
         st.caption("📊 **Histórico:** Volume total de liberados por ano.")
     with col_a2:
-        # Cálculo da Taxa de Retenção (%)
-        df_ano['TOTAL_VEICULOS'] = df_ano['LIBERADOS'] + df_ano['MALHA']
-        df_ano['MALHA_PCT'] = df_ano.apply(lambda row: 0 if row['TOTAL_VEICULOS'] == 0 else (int((row['MALHA'] / row['TOTAL_VEICULOS'] * 100) * 10 + 0.5) / 10.0), axis=1)
+        # Cálculo da Taxa de Retenção (%) usando função auxiliar
+        df_ano['MALHA_PCT'] = df_ano.apply(calculate_retention_rate, axis=1)
         
         fig_malha_ano = px.bar(df_ano, x='Ano', y='MALHA_PCT', color='TRANSPORTADORA', title="Taxa de Retenção (Malha Fina) % por Ano")
-        fig_malha_ano.update_traces(texttemplate='%{y:.1f}%', textposition='auto', textfont_size=14)
+        fig_malha_ano.update_traces(texttemplate='%{y:.2f}%', textposition='auto', textfont_size=14)
         fig_malha_ano.update_layout(template="plotly_white", xaxis_title="Ano", yaxis_title="Retenção (%)")
         st.plotly_chart(fig_malha_ano, key="ano_malha", width="stretch")
         st.caption("🛡️ **Consolidado:** Taxa média anual de retenção para auditoria.")
@@ -487,21 +663,18 @@ with tab_ano:
 with st.expander("Ver Dados Detalhados"):
     # Prepara dataframe para exibição com cálculos idênticos ao Excel
     df_display = df_filtered.copy()
-    df_display['TOTAL'] = df_display['LIBERADOS'] + df_display['MALHA']
+    df_display['TOTAL GERAL'] = df_display['LIBERADOS'] + df_display['MALHA']
     
-    # Aplica a lógica de arredondamento (Round Half Up) para 1 casa decimal
-    df_display['% MALHA'] = df_display.apply(
-        lambda row: 0 if row['TOTAL'] == 0 else (int((row['MALHA'] / row['TOTAL'] * 100) * 10 + 0.5) / 10.0), 
-        axis=1
-    )
+    # Aplica a lógica de arredondamento usando a função auxiliar
+    df_display['% MALHA'] = df_display.apply(calculate_retention_rate, axis=1)
 
     st.dataframe(
         df_display.sort_values(by=['DATA', 'TRANSPORTADORA']),
         width="stretch",
         column_config={
             "DATA": st.column_config.DateColumn("Data", format="DD/MM/YYYY"),
-            "% MALHA": st.column_config.NumberColumn("% Malha", format="%.1f%%"),
-            "TOTAL": st.column_config.NumberColumn("Total", format="%d")
+            "% MALHA": st.column_config.NumberColumn("% Malha", format="%.2f%%"),
+            "TOTAL GERAL": st.column_config.NumberColumn("Total Geral", format="%d")
         }
     )
 
@@ -512,5 +685,3 @@ st.markdown("<div style='text-align: center'>Desenvolvido por <b>Clayton S. Silv
 
 
 ##  streamlit run app.py
-
-
