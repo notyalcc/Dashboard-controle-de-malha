@@ -320,6 +320,11 @@ if acesso_liberado:
         default=df['TRANSPORTADORA'].unique()
     )
 
+    # Botão para recarregar dados (Limpar Cache)
+    if st.sidebar.button("🔄 Atualizar Dados (DB)"):
+        del st.session_state['df_dados']
+        st.rerun()
+
     st.sidebar.markdown("---")
     st.sidebar.markdown("Desenvolvido por **Clayton S. Silva**")
 
@@ -387,25 +392,45 @@ st.title("📊 Dashboard Controle de Malha fina e Liberados 2026")
 # --- CONTEXTO DO PROCESSO (NOVO) ---
 with st.expander("ℹ️ Entenda o Processo de Malha Fina (Auditoria)"):
     st.markdown("""
-    **Objetivo:** Inibir procedimentos fora do padrão e garantir a acuracidade da carga.
+    **Fluxo Operacional Padrão:**
     
-    1. **Carregamento:** O veículo é carregado e segue para a portaria.
-    2. **Sorteio Aleatório:** Na saída, o sistema define o status do veículo.
-    3. **Resultado:** 🟢 **Liberado** (Segue viagem) ou 🔴 **Malhou** (Retorna para reconferência física).
+    1.   **Carregamento:** A transportadora realiza o carregamento dos produtos e o veículo se dirige à **Portaria de Saída**.
+    2.  🎲 **Sorteio Aleatório:** Na portaria, é realizado um sorteio individual para cada veículo.
+    3.  🚦 **Resultado:**
+        *   🟢 **Liberado:** O veículo segue viagem normalmente.
+        *   🔴 **Malha (Retenção):** O veículo deve retornar ao **Setor de Retorno** para uma **Nova Conferência**.
+    4.  📋 **Conclusão:** Após a reconferência, se não houver divergências, o veículo é liberado. Caso contrário, a divergência é relatada.
     """)
 
-# KPIs
+# --- CÁLCULO DE KPIS E DELTAS (COMPARATIVO) ---
+# Período Atual
 total_liberados = df_filtered['LIBERADOS'].sum()
 total_malha = df_filtered['MALHA'].sum()
 total_veiculos = total_liberados + total_malha
 taxa_malha_global = (total_malha / total_veiculos * 100) if total_veiculos > 0 else 0
-media_liberados = df_filtered['LIBERADOS'].mean()
+
+# Período Anterior (para cálculo do Delta)
+periodo_dias = (pd.to_datetime(end_date) - pd.to_datetime(start_date)).days + 1
+data_inicio_prev = pd.to_datetime(start_date) - pd.Timedelta(days=periodo_dias)
+data_fim_prev = pd.to_datetime(start_date) - pd.Timedelta(days=1)
+
+df_prev = df[
+    (df['DATA'] >= data_inicio_prev) &
+    (df['DATA'] <= data_fim_prev) &
+    (df['OPERAÇÃO'].isin(operacoes)) &
+    (df['TRANSPORTADORA'].isin(transportadoras))
+]
+
+total_veiculos_prev = df_prev['LIBERADOS'].sum() + df_prev['MALHA'].sum()
+total_liberados_prev = df_prev['LIBERADOS'].sum()
+total_malha_prev = df_prev['MALHA'].sum()
+taxa_malha_prev = (total_malha_prev / total_veiculos_prev * 100) if total_veiculos_prev > 0 else 0
 
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("Fluxo Total (Veículos)", f"{total_veiculos:,.0f}")
-col2.metric("Veículos Liberados", f"{total_liberados:,.0f}")
-col3.metric("Retidos em Malha", f"{total_malha:,.0f}")
-col4.metric("Taxa de Retenção Global", f"{taxa_malha_global:.2f}%")
+col1.metric("Fluxo Total (Veículos)", f"{total_veiculos:,.0f}", f"{total_veiculos - total_veiculos_prev:,.0f} vs período anterior")
+col2.metric("Veículos Liberados", f"{total_liberados:,.0f}", f"{total_liberados - total_liberados_prev:,.0f} vs período anterior")
+col3.metric("Retidos em Malha", f"{total_malha:,.0f}", f"{total_malha - total_malha_prev:,.0f} vs período anterior", delta_color="inverse")
+col4.metric("Taxa de Retenção Global", f"{taxa_malha_global:.2f}%", f"{taxa_malha_global - taxa_malha_prev:.2f} p.p.", delta_color="inverse")
 
 st.markdown("---")
 
@@ -476,10 +501,10 @@ with tab_geral:
 
     with st.expander("💡 Análise de Risco e Fluxo (Como interpretar?)"):
         st.markdown("""
-        *   **Fluxo do Sorteio (Funil):** Visualiza a eficiência global. Se a base vermelha (Retidos) estiver muito larga, indica um alto índice de paradas, o que pode impactar a fila de saída e o tempo de permanência.
-        *   **Mapa de Calor (Heatmap):** Ferramenta poderosa para identificar **padrões viciados**.
-            *   **Cor Escura:** Indica alta taxa de retenção (%) naquele dia da semana para aquela transportadora.
-            *   **O que buscar:** Se uma transportadora apresenta cor escura sempre no mesmo dia (ex: toda Sexta-feira), investigue se há um problema recorrente na equipe de expedição ou processo desse dia específico.
+        *   **Fluxo do Sorteio (Funil):** Mostra a proporção de veículos que seguem viagem direta vs. aqueles desviados para o **Setor de Retorno**. Uma base vermelha larga indica gargalo na reconferência.
+        *   **Mapa de Calor (Heatmap):** Identifica dias críticos na operação.
+            *   🔥 **Cor Intensa:** Indica que, naquele dia da semana, a transportadora tem alta incidência de ida para Malha.
+            *   🕵️ **Ação:** Investigar se há padrões viciados (ex: toda sexta-feira a taxa sobe) ou problemas específicos na expedição.
         """)
 
     st.markdown("---")
@@ -526,11 +551,10 @@ with tab_geral:
     
     with st.expander("💡 Análise de Tendência Diária (O que observar?)"):
         st.markdown("""
-        *   **Fluxo de Saída (Volume):** Monitore a estabilidade da operação. Quedas bruscas podem indicar problemas operacionais (sistema fora do ar, falta de carga).
-        *   **Taxa de Retenção (%):**
-            *   **Estabilidade:** O ideal é que a taxa oscile dentro de uma margem esperada (ex: meta de 5% a 10%).
-            *   **Picos:** Um pico repentino (ex: >15%) indica atuação forte do sorteio ou problemas na qualidade da carga naquele dia.
-            *   **Zeros:** Dias com 0% de malha (tendo volume de saída) podem indicar falha no sistema de sorteio aleatório.
+        *   📊 **Fluxo de Saída (Volume):** Acompanhe a quantidade de veículos processados na portaria. Quedas podem indicar falta de carga ou problemas sistêmicos.
+        *   🛡️ **Taxa de Retenção (%):** Monitora a severidade do sorteio.
+            *   📈 **Picos:** Indicam que muitos veículos foram enviados para reconferência naquele dia, o que pode gerar atrasos e filas no retorno.
+            *   📉 **Zeros:** Dias com 0% de malha sugerem falha no sistema de sorteio (todos passaram direto).
         """)
 
     st.markdown("---")
@@ -668,9 +692,10 @@ with st.expander("Ver Dados Detalhados"):
     # Aplica a lógica de arredondamento usando a função auxiliar
     df_display['% MALHA'] = df_display.apply(calculate_retention_rate, axis=1)
 
-    st.dataframe(
+    st.data_editor(
         df_display.sort_values(by=['DATA', 'TRANSPORTADORA']),
         width="stretch",
+        disabled=True, # Apenas leitura por enquanto, mas com UX de planilha
         column_config={
             "DATA": st.column_config.DateColumn("Data", format="DD/MM/YYYY"),
             "% MALHA": st.column_config.NumberColumn("% Malha", format="%.2f%%"),
