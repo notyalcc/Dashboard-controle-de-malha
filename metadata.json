@@ -1,0 +1,8 @@
+
+{
+  "name": "Material Pro - Grupo Macor",
+  "description": "Terminal Premium de conferência de materiais e equipamentos para segurança patrimonial.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

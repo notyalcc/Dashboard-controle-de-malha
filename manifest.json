@@ -1,0 +1,23 @@
+
+{
+  "short_name": "MaterialPro",
+  "name": "Material Pro - Grupo Macor",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MDAgNTEyIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImEiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMCUiIHkyPSIxMDAlIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMUQzQjZCIi8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjMEMyNjQ4Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHBhdGggZD0iTTM1IDMwIGgzMzAgaDAgdjI0MCBjMCAxMzAtMTY1IDIxMi0xNjUgMjEyUzM1IDQwMCAzNSAyNzAgWiIgZmlsbD0idXJsKCNhKSIgc3Ryb2tlPSIjMUQzQjZCIiBzdHJva2Utd2lkdGg9IjgiLz48ZyBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTEyMCAxNDUgbDgwIDQ1IGw4MC00NSIvPjxwYXRoIGQ9Ik0xMjAgMjA1IGw4MCA0NSBsODAtNDUiLz48cGF0aCBkPSJNMTIwIDI2NSBsODAgNDUgbDgwLTQ1Ii8+PC9nPjwvc3ZnPg==",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MDAgNTEyIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImEiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMCUiIHkyPSIxMDAlIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMUQzQjZCIi8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjMEMyNjQ4Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHBhdGggZD0iTTM1IDMwIGgzMzAgaDAgdjI0MCBjMCAxMzAtMTY1IDIxMi0xNjUgMjEyUzM1IDQwMCAzNSAyNzAgWiIgZmlsbD0idXJsKCNhKSIgc3Ryb2tlPSIjMUQzQjZCIiBzdHJva2Utd2lkdGg9IjgiLz48ZyBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTEyMCAxNDUgbDgwIDQ1IGw4MC00NSIvPjxwYXRoIGQ9Ik0xMjAgMjA1IGw4MCA0NSBsODAtNDUiLz48cGF0aCBkPSJNMTIwIDI2NSBsODAgNDUgbDgwLTQ1Ii8+PC9nPjwvc3ZnPg==",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#1D3B6B",
+  "background_color": "#020617",
+  "orientation": "portrait"
+}
