@@ -7,20 +7,15 @@ export default defineConfig({
     'process.env.API_KEY': JSON.stringify(process.env.API_KEY || '')
   },
   resolve: {
-    extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json']
+    extensions: ['.js', '.ts', '.jsx', '.tsx', '.json']
   },
   build: {
     outDir: 'dist',
     emptyOutDir: true,
     sourcemap: false,
-    commonjsOptions: {
-      transformMixedEsModules: true
-    },
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor': ['react', 'react-dom', 'react-router-dom', '@supabase/supabase-js', '@google/genai']
-        }
+        manualChunks: undefined
       }
     }
   }
